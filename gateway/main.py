@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 import logging
 
@@ -21,7 +21,7 @@ router = Router()
 cache = RedisCache()
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
-async def chat_completions(request: ChatCompletionRequest):
+async def chat_completions(request: ChatCompletionRequest, response: Response):
     logger.info(f"Received request for model: {request.model}")
     
     # 1. Check Cache
@@ -29,6 +29,7 @@ async def chat_completions(request: ChatCompletionRequest):
          cached_response = await cache.get_cached_response(request)
          if cached_response:
              logger.info("Cache hit!")
+             response.headers["X-Cache"] = "HIT"
              return cached_response
     except Exception as e:
          logger.warning(f"Failed to fetch from cache: {str(e)}")
@@ -36,15 +37,16 @@ async def chat_completions(request: ChatCompletionRequest):
     # 2. Route Request to Provider
     try:
         logger.info("Cache miss. Routing request to provider.")
-        response = await router.route_request(request)
+        provider_response = await router.route_request(request)
         
         # 3. Store in Cache asynchronously (fire and forget pattern is better suited for a background task but await is fine for MVP)
         try:
-             await cache.set_cached_response(request, response)
+             await cache.set_cached_response(request, provider_response)
         except Exception as e:
              logger.warning(f"Failed to write to cache: {str(e)}")
              
-        return response
+        response.headers["X-Cache"] = "MISS"
+        return provider_response
     except Exception as e:
          logger.error(f"Provider request failed: {str(e)}")
          raise HTTPException(status_code=502, detail=f"Bad Gateway: {str(e)}")
