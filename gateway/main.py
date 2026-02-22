@@ -1,0 +1,58 @@
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+import logging
+
+from core.schemas import ChatCompletionRequest, ChatCompletionResponse
+from core.config import settings
+from routing.router import Router
+from cache.redis_client import RedisCache
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("switchboard.gateway")
+
+app = FastAPI(
+    title="SwitchBoard Gateway",
+    description="Multi-provider LLM gateway (MVP targeting Groq)",
+    version="0.1.0"
+)
+
+router = Router()
+cache = RedisCache()
+
+@app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
+async def chat_completions(request: ChatCompletionRequest):
+    logger.info(f"Received request for model: {request.model}")
+    
+    # 1. Check Cache
+    try:
+         cached_response = await cache.get_cached_response(request)
+         if cached_response:
+             logger.info("Cache hit!")
+             return cached_response
+    except Exception as e:
+         logger.warning(f"Failed to fetch from cache: {str(e)}")
+         
+    # 2. Route Request to Provider
+    try:
+        logger.info("Cache miss. Routing request to provider.")
+        response = await router.route_request(request)
+        
+        # 3. Store in Cache asynchronously (fire and forget pattern is better suited for a background task but await is fine for MVP)
+        try:
+             await cache.set_cached_response(request, response)
+        except Exception as e:
+             logger.warning(f"Failed to write to cache: {str(e)}")
+             
+        return response
+    except Exception as e:
+         logger.error(f"Provider request failed: {str(e)}")
+         raise HTTPException(status_code=502, detail=f"Bad Gateway: {str(e)}")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "version": "0.1.0"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("gateway.main:app", host=settings.HOST, port=settings.PORT, reload=True)
