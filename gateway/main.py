@@ -17,6 +17,16 @@ app = FastAPI(
     version="0.1.0"
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Cache", "X-Semantic-Similarity"]
+)
+
 router = Router()
 cache = RedisCache()
 
@@ -25,11 +35,13 @@ async def chat_completions(request: ChatCompletionRequest, response: Response):
     logger.info(f"Received request for model: {request.model}")
     
     # 1. Check Cache
+    highest_similarity = -1.0
     try:
-         cached_response = await cache.get_cached_response(request)
+         cached_response, highest_similarity = await cache.get_cached_response(request)
          if cached_response:
              logger.info("Cache hit!")
              response.headers["X-Cache"] = "HIT"
+             response.headers["X-Semantic-Similarity"] = f"{highest_similarity:.4f}"
              return cached_response
     except Exception as e:
          logger.warning(f"Failed to fetch from cache: {str(e)}")
@@ -46,6 +58,8 @@ async def chat_completions(request: ChatCompletionRequest, response: Response):
              logger.warning(f"Failed to write to cache: {str(e)}")
              
         response.headers["X-Cache"] = "MISS"
+        if highest_similarity >= -1.0:
+            response.headers["X-Semantic-Similarity"] = f"{highest_similarity:.4f}"
         return provider_response
     except Exception as e:
          logger.error(f"Provider request failed: {str(e)}")

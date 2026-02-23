@@ -80,6 +80,7 @@ if st.button("Send Query", type="primary"):
                 
                 # Check cache vs model via header, fallback to latency heuristic
                 x_cache = response.headers.get("X-Cache")
+                x_semantic_similarity = response.headers.get("X-Semantic-Similarity")
                 if x_cache:
                     is_cached = (x_cache == "HIT")
                 else:
@@ -90,7 +91,7 @@ if st.button("Send Query", type="primary"):
                 st.info(content)
                 
                 # Display Details
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 col1.metric("Latency", f"{latency:.3f} s")
                 
                 if is_cached:
@@ -99,6 +100,11 @@ if st.button("Send Query", type="primary"):
                     col2.metric("Source", "Model 🧠")
                     
                 col3.metric("Tokens used", data.get("usage", {}).get("total_tokens", 0))
+                
+                if x_semantic_similarity and float(x_semantic_similarity) > -1.0:
+                    col4.metric("Similarity", x_semantic_similarity)
+                else:
+                    col4.metric("Similarity", "N/A")
                 
                 st.expander("Raw API Response").json(data)
                 
