@@ -562,3 +562,218 @@ If you want next, I can:
 * Break this into a **precise weekly execution roadmap**
 * Or design a **production-ready folder architecture with real config examples**
 * Or help you define the **exact tech stack choices to maximize recruiter impact**
+
+# Switchboard – MVP Deployment & Control Plane Architecture
+
+## 1. Product Model (MVP Scope)
+
+Switchboard is a **self-hosted LLM gateway** designed to run locally or within a private infrastructure environment. It acts as a middleware layer between applications and multiple upstream LLM providers.
+
+For the MVP version:
+
+* The system operates in **single-user mode** (no multi-tenancy).
+* It is intended to be deployed locally using Docker.
+* All provider API keys remain inside the user’s environment.
+* Applications connect to Switchboard using an OpenAI-compatible API.
+
+The objective of this phase is to deliver a production-inspired architecture while keeping operational complexity minimal.
+
+---
+
+## 2. High-Level Architecture Overview
+
+The MVP architecture consists of two primary functional areas:
+
+### 2.1 Data Plane (Inference Layer)
+
+Responsible for handling all LLM traffic.
+
+Components include:
+
+* FastAPI Gateway
+* Exact-match Redis Cache
+* Semantic Cache (Vector Database)
+* Embedding Generator
+* Provider Adapters (e.g., OpenAI, Anthropic)
+
+This layer handles:
+
+* Request routing
+* Cache evaluation
+* Fallback logic
+* Cost tracking
+* Streaming responses
+
+The gateway itself remains stateless. All persistent data is stored in external services.
+
+---
+
+### 2.2 Control Plane (Administrative Interface)
+
+A web-based Admin UI is introduced in the MVP to allow runtime configuration without modifying environment files.
+
+The Control Plane allows the user to:
+
+* Add multiple provider API keys
+* Enable or disable providers
+* Configure provider rate limits
+* Adjust routing preferences
+* Monitor provider health status
+
+This eliminates the need to hardcode credentials or restart the system when updating configuration.
+
+---
+
+## 3. Local Development Deployment
+
+Switchboard MVP is designed to run fully on localhost using Docker Compose.
+
+### Services Included
+
+* `switchboard-api` (Gateway) – Port 8000
+* `switchboard-ui` (Admin Interface) – Port 3000
+* `redis` (Exact Cache)
+* `vector-db` (Semantic Cache)
+* `postgres` (Configuration Store)
+* `prometheus` (Metrics Collection)
+* `grafana` (Metrics Visualization)
+
+### Access Points
+
+* API Endpoint:
+  `http://localhost:8000/v1`
+
+* Admin UI:
+  `http://localhost:3000`
+
+* Metrics Dashboard (Grafana):
+  `http://localhost:3001`
+
+This setup mirrors a realistic infrastructure deployment while remaining simple to operate.
+
+---
+
+## 4. Provider Configuration & Secret Management
+
+The MVP introduces dynamic provider management through the Admin UI.
+
+### Configuration Capabilities
+
+Users can:
+
+* Add multiple provider API keys
+* Set rate limits per provider
+* Toggle providers on or off
+* Modify routing weights
+
+### Secret Handling
+
+Provider API keys are:
+
+* Stored securely in a database
+* Encrypted before persistence
+* Never exposed to the frontend after submission
+
+This ensures that:
+
+* Credentials are not stored in plaintext
+* No hardcoded secrets exist in source files
+* Configuration can be modified without restarting the service
+
+---
+
+## 5. Usage Dashboard & Observability
+
+Switchboard includes observability as a first-class feature.
+
+### Metrics Collected
+
+* Cache hit rate
+* Provider latency
+* Error rates
+* Token usage
+* Estimated cost savings
+
+Metrics are collected using Prometheus and visualized through Grafana.
+
+This provides:
+
+* Real-time system visibility
+* Historical performance trends
+* Insight into routing effectiveness
+* Clear demonstration of cost optimization
+
+For MVP, Grafana serves as the primary dashboard solution rather than building a fully custom analytics frontend.
+
+---
+
+## 6. Application Integration
+
+From an application’s perspective, integration requires only changing the base URL.
+
+Before Switchboard:
+
+```python
+OpenAI(api_key="sk-xxx")
+```
+
+After Switchboard:
+
+```python
+OpenAI(
+  base_url="http://localhost:8000/v1"
+)
+```
+
+No SDK changes are required.
+
+The gateway remains fully compatible with the OpenAI REST and streaming interface.
+
+---
+
+## 7. Stateless Gateway Design (MVP)
+
+Switchboard’s API layer does not store state internally.
+
+All state is externalized to:
+
+* Redis (exact cache)
+* Vector Database (semantic cache)
+* Postgres (configuration store)
+* Prometheus (metrics storage)
+
+This design allows:
+
+* Safe horizontal scaling in future phases
+* Independent scaling of components
+* Clean separation between control and data layers
+
+---
+
+## 8. Scope Definition for MVP
+
+The MVP intentionally excludes:
+
+* Multi-tenancy
+* Per-user cost isolation
+* Advanced dynamic routing policies
+* Distributed circuit breaker synchronization
+
+The focus of this phase is:
+
+* Stable gateway functionality
+* Dynamic provider configuration
+* Reliable caching
+* Clear observability
+* Clean local deployment model
+
+---
+
+## 9. Architectural Positioning
+
+With the introduction of the Admin UI and Dashboard, Switchboard evolves from a simple API proxy into:
+
+> A self-hosted LLM traffic control layer with runtime configuration and production-style observability.
+
+Even in single-user mode, the architecture reflects scalable design principles while maintaining practical scope control.
+
