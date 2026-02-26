@@ -39,3 +39,7 @@ wheels/
 
 # Project specific
 .agents/
+
+# Data directory (SQLite DB)
+data/
+*.db

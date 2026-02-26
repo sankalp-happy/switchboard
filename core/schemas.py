@@ -28,3 +28,12 @@ class ChatCompletionResponse(BaseModel):
     model: str
     choices: List[ChatChoice]
     usage: Usage
+
+
+class ProviderResult(BaseModel):
+    """Wraps a provider response with metadata for the router."""
+    response: ChatCompletionResponse
+    provider: str = ""
+    key_id: int = 0
+    latency_ms: float = 0.0
+    rate_limit_headers: Dict[str, str] = {}

@@ -6,15 +6,55 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - REDIS_URL=redis://redis:6379/0
+      - SQLITE_DB_PATH=/app/data/switchboard.db
     depends_on:
       - redis
     volumes:
       - .:/app
+      - switchboard-data:/app/data
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+
+  admin-ui:
+    build: ./vis
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://gateway:8000
+    depends_on:
+      - gateway
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - gateway
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=switchboard
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  switchboard-data:

@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: "Switchboard"
+    orgId: 1
+    folder: "Switchboard"
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

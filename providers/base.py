@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any
-from core.schemas import ChatCompletionRequest, ChatCompletionResponse
+from core.schemas import ChatCompletionRequest, ProviderResult
+
 
 class LLMProvider(ABC):
     @abstractmethod
-    async def generate(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
+    async def generate(self, request: ChatCompletionRequest) -> ProviderResult:
+        """Send a request and return ProviderResult (response + metadata/headers)."""
         pass
 
     @abstractmethod
