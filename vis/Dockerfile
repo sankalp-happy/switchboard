@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir streamlit requests
+RUN pip install --no-cache-dir streamlit requests redis
 
 COPY app.py .
 
