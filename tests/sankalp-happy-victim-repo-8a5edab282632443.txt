@@ -1,0 +1,837 @@
+Directory structure:
+└── sankalp-happy-victim-repo/
+    ├── package.json
+    ├── server.js
+    ├── backup/
+    │   └── users.sql
+    └── public/
+        ├── app.js
+        ├── index.html
+        └── styles.css
+
+================================================
+FILE: package.json
+================================================
+{
+  "name": "victim-repo",
+  "version": "1.0.0",
+  "description": "Intentionally vulnerable web app for security tooling validation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "sqlite3": "^5.1.7"
+  }
+}
+
+
+
+================================================
+FILE: server.js
+================================================
+const express = require("express");
+const path = require("path");
+const fs = require("fs");
+const sqlite3 = require("sqlite3").verbose();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+const dataDir = path.join(__dirname, "data");
+const dbPath = path.join(dataDir, "lab.db");
+
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const db = new sqlite3.Database(dbPath);
+
+function seedDatabase() {
+  db.serialize(() => {
+    db.run(
+      "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, password TEXT, email TEXT, ssn TEXT, bio TEXT)"
+    );
+    db.run(
+      "CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY AUTOINCREMENT, author TEXT, message TEXT, created_at TEXT)"
+    );
+
+    db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
+      if (err) {
+        return;
+      }
+
+      if (row.count === 0) {
+        const seedUsers = [
+          ["alice", "password123", "alice@acme.local", "100-11-2222", "Product owner"],
+          ["bob", "letmein", "bob@acme.local", "200-22-3333", "Finance manager"],
+          ["charlie", "qwerty", "charlie@acme.local", "300-33-4444", "Support lead"]
+        ];
+
+        const stmt = db.prepare("INSERT INTO users (username, password, email, ssn, bio) VALUES (?, ?, ?, ?, ?)");
+        for (const user of seedUsers) {
+          stmt.run(user);
+        }
+        stmt.finalize();
+      }
+    });
+  });
+}
+
+seedDatabase();
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+app.use(express.static(path.join(__dirname, "public"), { dotfiles: "allow" }));
+
+app.post("/api/login", (req, res) => {
+  const username = req.body.username || "";
+  const password = req.body.password || "";
+
+  const query = `SELECT id, username, email FROM users WHERE username = '${username}' AND password = '${password}' LIMIT 1`;
+
+  db.get(query, (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: err.message, query });
+    }
+
+    if (!row) {
+      return res.status(401).json({ success: false, message: "Invalid credentials", query });
+    }
+
+    res.json({
+      success: true,
+      message: "Login successful",
+      user: row,
+      query
+    });
+  });
+});
+
+app.get("/api/account/:id", (req, res) => {
+  const accountId = req.params.id;
+  const query = `SELECT id, username, email, ssn, bio FROM users WHERE id = ${accountId}`;
+
+  db.get(query, (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: err.message, query });
+    }
+
+    if (!row) {
+      return res.status(404).json({ message: "Account not found", query });
+    }
+
+    res.json({
+      account: row,
+      note: "No ownership validation is performed on this object.",
+      query
+    });
+  });
+});
+
+app.post("/api/comments", (req, res) => {
+  const author = req.body.author || "anonymous";
+  const message = req.body.message || "";
+  const createdAt = new Date().toISOString();
+
+  db.run(
+    "INSERT INTO comments (author, message, created_at) VALUES (?, ?, ?)",
+    [author, message, createdAt],
+    function insertCallback(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      res.status(201).json({
+        id: this.lastID,
+        author,
+        message,
+        created_at: createdAt
+      });
+    }
+  );
+});
+
+app.get("/api/comments", (_, res) => {
+  db.all("SELECT id, author, message, created_at FROM comments ORDER BY id DESC LIMIT 20", (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    res.json(rows);
+  });
+});
+
+app.get("/api/search", (req, res) => {
+  const term = req.query.term || "";
+  res.send(`<h2>Search Results for: ${term}</h2><p>No matches found.</p>`);
+});
+
+app.get("/redirect", (req, res) => {
+  const nextUrl = req.query.next || "/";
+  res.redirect(nextUrl);
+});
+
+app.get("/backup/users.sql", (_, res) => {
+  res.sendFile(path.join(__dirname, "backup", "users.sql"));
+});
+
+app.get("/.env", (_, res) => {
+  res.sendFile(path.join(__dirname, "secrets", ".env"));
+});
+
+app.listen(PORT, () => {
+  console.log(`Vulnerable demo app running at http://localhost:${PORT}`);
+});
+
+
+
+================================================
+FILE: backup/users.sql
+================================================
+-- Intentionally exposed backup dump
+INSERT INTO users (id, username, password, email, ssn, bio) VALUES (1, 'alice', 'password123', 'alice@acme.local', '100-11-2222', 'Product owner');
+INSERT INTO users (id, username, password, email, ssn, bio) VALUES (2, 'bob', 'letmein', 'bob@acme.local', '200-22-3333', 'Finance manager');
+INSERT INTO users (id, username, password, email, ssn, bio) VALUES (3, 'charlie', 'qwerty', 'charlie@acme.local', '300-33-4444', 'Support lead');
+
+
+
+================================================
+FILE: public/app.js
+================================================
+const loginForm = document.getElementById("login-form");
+const idorForm = document.getElementById("idor-form");
+const commentForm = document.getElementById("comment-form");
+const searchForm = document.getElementById("search-form");
+const redirectForm = document.getElementById("redirect-form");
+const corsButton = document.getElementById("cors-check");
+
+const loginResult = document.getElementById("login-result");
+const idorResult = document.getElementById("idor-result");
+const commentsList = document.getElementById("comments");
+const searchResult = document.getElementById("search-result");
+const corsResult = document.getElementById("cors-result");
+
+function printJson(node, data) {
+  node.textContent = JSON.stringify(data, null, 2);
+}
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(loginForm);
+
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: form.get("username"),
+      password: form.get("password")
+    })
+  });
+
+  const data = await response.json();
+  printJson(loginResult, data);
+});
+
+idorForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(idorForm);
+  const accountId = form.get("accountId");
+
+  const response = await fetch(`/api/account/${accountId}`);
+  const data = await response.json();
+  printJson(idorResult, data);
+});
+
+commentForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(commentForm);
+
+  await fetch("/api/comments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      author: form.get("author"),
+      message: form.get("message")
+    })
+  });
+
+  commentForm.reset();
+  loadComments();
+});
+
+async function loadComments() {
+  const response = await fetch("/api/comments");
+  const comments = await response.json();
+
+  commentsList.innerHTML = comments
+    .map(
+      (comment) => `
+      <div class="comment">
+        <strong>${comment.author}</strong>
+        <p>${comment.message}</p>
+        <small>${comment.created_at}</small>
+      </div>
+    `
+    )
+    .join("");
+}
+
+searchForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(searchForm);
+  const term = form.get("term");
+
+  const response = await fetch(`/api/search?term=${encodeURIComponent(term)}`);
+  const html = await response.text();
+
+  searchResult.innerHTML = html;
+});
+
+redirectForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const form = new FormData(redirectForm);
+  const next = form.get("next");
+  window.location.href = `/redirect?next=${encodeURIComponent(next)}`;
+});
+
+corsButton.addEventListener("click", async () => {
+  const response = await fetch("/api/account/1", {
+    credentials: "include"
+  });
+
+  const data = await response.json();
+
+  printJson(corsResult, {
+    note: "If requested from another origin, server reflects Origin and allows credentials.",
+    sampleResponse: data
+  });
+});
+
+loadComments();
+
+
+
+================================================
+FILE: public/index.html
+================================================
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meridian — Employee Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+
+    <nav class="topnav">
+      <div class="nav-inner">
+        <div class="nav-brand">
+          <div class="brand-mark">M</div>
+          <span class="brand-name">Meridian</span>
+        </div>
+        <div class="nav-links">
+          <a href="#">Dashboard</a>
+          <a href="#">Directory</a>
+          <a href="#">Support</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="layout">
+      <div class="page-header">
+        <h1>Employee Portal</h1>
+        <p>Access your account, explore the directory, and manage team resources.</p>
+      </div>
+
+      <section class="panel-grid">
+
+        <article class="panel">
+          <div class="panel-hdr">
+            <span class="panel-icon">&#128274;</span>
+            <h2>Sign In</h2>
+          </div>
+          <p class="panel-desc">Access your Meridian account using your employee credentials.</p>
+          <form id="login-form">
+            <label for="u-username">Username</label>
+            <input id="u-username" type="text" name="username" placeholder="e.g. jdoe" autocomplete="username" required />
+            <label for="u-password">Password</label>
+            <input id="u-password" type="text" name="password" placeholder="Your password" autocomplete="current-password" required />
+            <button type="submit">Sign In</button>
+          </form>
+          <pre id="login-result" class="result"></pre>
+        </article>
+
+        <article class="panel">
+          <div class="panel-hdr">
+            <span class="panel-icon">&#128100;</span>
+            <h2>Employee Profile</h2>
+          </div>
+          <p class="panel-desc">Look up any employee record by their internal ID number.</p>
+          <form id="idor-form">
+            <label for="u-acctid">Employee ID</label>
+            <input id="u-acctid" type="number" name="accountId" min="1" value="1" required />
+            <button type="submit">View Profile</button>
+          </form>
+          <pre id="idor-result" class="result"></pre>
+        </article>
+
+        <article class="panel wide">
+          <div class="panel-hdr">
+            <span class="panel-icon">&#128203;</span>
+            <h2>Team Announcements</h2>
+          </div>
+          <p class="panel-desc">Post updates, news, and notes for the rest of the team.</p>
+          <form id="comment-form" class="stacked">
+            <label for="u-author">Your Name</label>
+            <input id="u-author" type="text" name="author" placeholder="Full name" required />
+            <label for="u-message">Message</label>
+            <textarea id="u-message" name="message" rows="3" placeholder="Write your announcement here…"></textarea>
+            <button type="submit">Post Announcement</button>
+          </form>
+          <div id="comments" class="comment-wall"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-hdr">
+            <span class="panel-icon">&#128269;</span>
+            <h2>Directory Search</h2>
+          </div>
+          <p class="panel-desc">Find employees across all departments by name or role.</p>
+          <form id="search-form">
+            <label for="u-term">Search Term</label>
+            <input id="u-term" type="text" name="term" placeholder="Name, role, or department…" required />
+            <button type="submit">Search</button>
+          </form>
+          <div id="search-result" class="result html"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-hdr">
+            <span class="panel-icon">&#128279;</span>
+            <h2>Partner Portal</h2>
+          </div>
+          <p class="panel-desc">Navigate to a partner resource or external system via a managed redirect.</p>
+          <form id="redirect-form">
+            <label for="u-next">Destination URL</label>
+            <input id="u-next" type="url" name="next" placeholder="https://partner.example.com" required />
+            <button type="submit">Open Link</button>
+          </form>
+          <p class="small">You will be directed to the specified external resource.</p>
+        </article>
+
+        <article class="panel">
+          <div class="panel-hdr">
+            <span class="panel-icon">&#128193;</span>
+            <h2>Developer Resources</h2>
+          </div>
+          <p class="panel-desc">Internal configuration files and database exports for engineering teams.</p>
+          <ul>
+            <li><a href="/.env" target="_blank" rel="noreferrer">Environment Config</a></li>
+            <li><a href="/backup/users.sql" target="_blank" rel="noreferrer">User DB Snapshot</a></li>
+          </ul>
+        </article>
+
+        <article class="panel wide">
+          <div class="panel-hdr">
+            <span class="panel-icon">&#127758;</span>
+            <h2>API Status</h2>
+          </div>
+          <p class="panel-desc">Verify connectivity and inspect response headers from the core API service.</p>
+          <button id="cors-check">Check API Status</button>
+          <pre id="cors-result" class="result"></pre>
+        </article>
+
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>&#169; 2026 Meridian Corp &nbsp;&middot;&nbsp; <a href="#">Privacy Policy</a> &nbsp;&middot;&nbsp; <a href="#">Terms of Use</a> &nbsp;&middot;&nbsp; <a href="#">Help Center</a></p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
+
+
+
+================================================
+FILE: public/styles.css
+================================================
+:root {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --border: #e2e6ef;
+  --text: #1a1d2e;
+  --muted: #6b7280;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: #eef2ff;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.09), 0 1px 4px rgba(0, 0, 0, 0.05);
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+/* ── Navigation ─────────────────────────────────── */
+.topnav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 150ms;
+}
+
+.nav-links a:hover {
+  color: var(--primary);
+}
+
+/* ── Page layout ─────────────────────────────────── */
+.layout {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.page-header {
+  margin-bottom: 1.75rem;
+}
+
+.page-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── Grid ────────────────────────────────────────── */
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.panel {
+  grid-column: span 4;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 200ms;
+}
+
+.panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.panel.wide {
+  grid-column: span 8;
+}
+
+/* ── Panel header ────────────────────────────────── */
+.panel-hdr {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.3rem;
+}
+
+.panel-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.panel-hdr h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.panel-desc {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/* ── Forms ───────────────────────────────────────── */
+form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.stacked {
+  margin-bottom: 0.9rem;
+}
+
+label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: -0.3rem;
+}
+
+input,
+textarea {
+  border: 1px solid var(--border);
+  background: #fafbff;
+  color: var(--text);
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.875rem;
+  transition: border-color 150ms, box-shadow 150ms;
+  outline: none;
+  width: 100%;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  background: #fff;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #b0b7c3;
+}
+
+button {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms, transform 100ms, box-shadow 150ms;
+  width: 100%;
+  letter-spacing: 0.01em;
+}
+
+button:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ── Result box ──────────────────────────────────── */
+.result {
+  margin: 0.75rem 0 0;
+  border: 1px solid var(--border);
+  background: #f8f9fc;
+  border-radius: 6px;
+  padding: 0.65rem 0.75rem;
+  min-height: 60px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.result.html {
+  min-height: 80px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+/* ── Comments ────────────────────────────────────── */
+.comment-wall {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.comment {
+  border: 1px solid var(--border);
+  background: #fafbff;
+  border-radius: 6px;
+  padding: 0.7rem 0.8rem;
+}
+
+.comment strong {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.comment p {
+  margin: 0.2rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.comment small {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ── Misc ────────────────────────────────────────── */
+.small {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.4rem;
+  list-style: disc;
+}
+
+ul li {
+  font-size: 0.875rem;
+}
+
+/* ── Footer ──────────────────────────────────────── */
+.footer {
+  text-align: center;
+  padding: 1.75rem 1.5rem 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 1rem;
+}
+
+.footer a {
+  color: var(--muted);
+}
+
+.footer a:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 980px) {
+  .panel,
+  .panel.wide {
+    grid-column: span 12;
+  }
+
+  .nav-links {
+    display: none;
+  }
+}
+
+

@@ -89,6 +89,13 @@ class Router:
                         provider=self.provider_name, key_label=str(key_id), status="rate_limited"
                     ).inc()
                     continue
+                elif status == 401:
+                    logger.warning(f"Key id={key_id} got 401 — invalid key, disabling and trying next")
+                    await key_manager.toggle_key(key_id, enabled=False)
+                    PROVIDER_REQUESTS.labels(
+                        provider=self.provider_name, key_label=str(key_id), status="auth_error"
+                    ).inc()
+                    continue
                 elif status >= 500:
                     logger.warning(f"Key id={key_id} got {status} — trying next key")
                     PROVIDER_REQUESTS.labels(
@@ -96,7 +103,7 @@ class Router:
                     ).inc()
                     continue
                 else:
-                    # 4xx other than 429 — don't retry
+                    # 4xx other than 429/401 — don't retry
                     PROVIDER_REQUESTS.labels(
                         provider=self.provider_name, key_label=str(key_id), status="client_error"
                     ).inc()

@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import asyncio
 import logging
 
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -34,9 +35,27 @@ async def lifespan(app: FastAPI):
             providers_seen[prov] = providers_seen.get(prov, 0) + 1
     for prov, count in providers_seen.items():
         ACTIVE_KEYS.labels(provider=prov).set(count)
-    logger.info("Switchboard gateway started.")
+    # Start background sweeper for expired rate-limit keys
+    sweeper_task = asyncio.create_task(_rate_limit_sweeper())
+    logger.info("Switchboard gateway started (rate-limit sweeper active).")
     yield
+    sweeper_task.cancel()
     logger.info("Switchboard gateway shutting down.")
+
+
+SWEEPER_INTERVAL_SECONDS = 5
+
+
+async def _rate_limit_sweeper():
+    """Periodically reset keys whose Groq rate-limit window has expired."""
+    while True:
+        try:
+            await asyncio.sleep(SWEEPER_INTERVAL_SECONDS)
+            await key_manager.reset_expired_keys()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"Rate-limit sweeper error: {e}")
 
 
 app = FastAPI(
