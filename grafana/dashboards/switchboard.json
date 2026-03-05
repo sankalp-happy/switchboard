@@ -29,15 +29,59 @@
       }
     },
     {
-      "title": "Request Throughput",
+      "title": "Total Request Throughput",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "expr": "rate(http_requests_total{handler=\"/v1/chat/completions\"}[5m])",
+          "legendFormat": "All Requests ({{method}} {{status}})",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "expr": "rate(switchboard_cache_hits_total[5m])",
+          "legendFormat": "Cache Hits",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "rate(switchboard_provider_requests_total[5m])",
-          "legendFormat": "{{provider}} / {{status}}",
+          "legendFormat": "Provider: {{provider}} ({{status}})",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Total Requests (counter)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "expr": "http_requests_total{handler=\"/v1/chat/completions\"}",
+          "legendFormat": "Completions",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "Cache Hits (counter)",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "expr": "switchboard_cache_hits_total",
+          "legendFormat": "Cache Hits",
           "refId": "A"
         }
       ]
@@ -76,7 +120,7 @@
       "title": "Key Switches (rate limit rotations)",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 12 },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
@@ -90,7 +134,7 @@
       "title": "Active Keys",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 12 },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
@@ -104,7 +148,7 @@
       "title": "Tokens Processed",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
@@ -122,7 +166,7 @@
       "title": "Cache Hits vs Misses",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
@@ -145,5 +189,5 @@
   "time": { "from": "now-15m", "to": "now" },
   "title": "Switchboard Gateway",
   "uid": "switchboard-main",
-  "version": 2
+  "version": 3
 }
