@@ -13,6 +13,7 @@ from typing import Set
 
 from core.schemas import ChatCompletionRequest, ChatCompletionResponse, ProviderResult
 from core.key_manager import key_manager
+from core.database import record_usage
 from core.metrics import (
     PROVIDER_REQUESTS,
     PROVIDER_LATENCY,
@@ -75,6 +76,16 @@ class Router:
                 TOKENS_PROCESSED.labels(direction="output").inc(
                     result.response.usage.completion_tokens
                 )
+
+                # Record per-key usage for dashboard stats
+                total_tokens = (
+                    result.response.usage.prompt_tokens
+                    + result.response.usage.completion_tokens
+                )
+                try:
+                    await record_usage(key_id, total_tokens)
+                except Exception as e:
+                    logger.warning(f"Failed to record usage for key {key_id}: {e}")
 
                 return result
 

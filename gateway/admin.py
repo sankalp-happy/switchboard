@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.key_manager import key_manager
+from core.database import get_usage_stats
 
 logger = logging.getLogger("switchboard.admin")
 
@@ -87,6 +88,35 @@ async def list_providers():
         if remaining is None or remaining > 100:
             providers[prov]["keys_with_quota"] += 1
     return {"providers": list(providers.values())}
+
+
+@admin_router.get("/keys/usage")
+async def keys_usage():
+    """Per-key request counts and token totals for last 24h and last 1 minute."""
+    stats_24h = await get_usage_stats(minutes=1440)
+    stats_1m = await get_usage_stats(minutes=1)
+
+    # Index 1-minute stats by key_id for easy merge
+    one_min_map = {s["key_id"]: s for s in stats_1m}
+
+    result = []
+    for s in stats_24h:
+        kid = s["key_id"]
+        one_min = one_min_map.get(kid, {})
+        result.append({
+            "id": kid,
+            "label": s["label"],
+            "provider": s["provider"],
+            "last_24h": {
+                "request_count": s["request_count"],
+                "total_tokens": s["total_tokens"],
+            },
+            "last_1m": {
+                "request_count": one_min.get("request_count", 0),
+                "total_tokens": one_min.get("total_tokens", 0),
+            },
+        })
+    return {"keys": result}
 
 
 @admin_router.get("/stats")

@@ -1,0 +1,41 @@
+server {
+    listen 3000;
+    server_name _;
+
+    # Serve the static dashboard
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Reverse-proxy all API calls to the gateway (Docker-internal)
+    location /v1/ {
+        proxy_pass ${API_URL}/v1/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        # Expose cache/routing headers to the browser
+        proxy_pass_header X-Cache;
+        proxy_pass_header X-Semantic-Similarity;
+        proxy_pass_header X-Provider;
+        proxy_pass_header X-Latency-Ms;
+    }
+
+    location /admin/ {
+        proxy_pass ${API_URL}/admin/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /health {
+        proxy_pass ${API_URL}/health;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /metrics {
+        proxy_pass ${API_URL}/metrics;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}

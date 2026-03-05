@@ -26,10 +26,8 @@ services:
       - "3000:3000"
     environment:
       - API_URL=http://gateway:8000
-      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - gateway
-      - redis
 
   prometheus:
     image: prom/prometheus:latest

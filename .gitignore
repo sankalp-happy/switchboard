@@ -27,6 +27,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+skills-lock.json
 
 # MacOS
 .DS_Store

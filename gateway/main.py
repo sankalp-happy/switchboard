@@ -9,7 +9,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from core.schemas import ChatCompletionRequest, ChatCompletionResponse
 from core.config import settings
-from core.database import init_db
+from core.database import init_db, cleanup_old_buckets
 from core.key_manager import key_manager
 from core.metrics import CACHE_HITS, CACHE_MISSES, ACTIVE_KEYS
 from routing.router import Router
@@ -37,9 +37,12 @@ async def lifespan(app: FastAPI):
         ACTIVE_KEYS.labels(provider=prov).set(count)
     # Start background sweeper for expired rate-limit keys
     sweeper_task = asyncio.create_task(_rate_limit_sweeper())
+    # Start background cleanup for old usage buckets
+    cleanup_task = asyncio.create_task(_usage_bucket_cleanup())
     logger.info("Switchboard gateway started (rate-limit sweeper active).")
     yield
     sweeper_task.cancel()
+    cleanup_task.cancel()
     logger.info("Switchboard gateway shutting down.")
 
 
@@ -56,6 +59,23 @@ async def _rate_limit_sweeper():
             break
         except Exception as e:
             logger.warning(f"Rate-limit sweeper error: {e}")
+
+
+USAGE_CLEANUP_INTERVAL_SECONDS = 600  # every 10 minutes
+
+
+async def _usage_bucket_cleanup():
+    """Periodically delete usage buckets older than 25 hours."""
+    while True:
+        try:
+            await asyncio.sleep(USAGE_CLEANUP_INTERVAL_SECONDS)
+            deleted = await cleanup_old_buckets()
+            if deleted:
+                logger.info(f"Cleaned up {deleted} old usage bucket(s).")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"Usage bucket cleanup error: {e}")
 
 
 app = FastAPI(
