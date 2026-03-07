@@ -13,7 +13,7 @@ SwitchBoard sits between your client applications and upstream LLM providers, of
 - **Automatic Key Rotation** — Register multiple API keys per provider; the router picks the key with the most remaining quota and automatically fails over on 429 rate limits or auth errors.
 - **Encrypted Key Storage** — API keys are encrypted at rest with Fernet (AES-128-CBC) and stored in SQLite.
 - **Rate-Limit Awareness** — Parses provider rate-limit headers in real time, tracks per-key quotas, and runs a background sweeper to reset expired windows.
-- **Admin API & Dashboard** — Full CRUD for API keys, provider health summaries, and stats via REST endpoints + a Streamlit admin UI.
+- **Admin API & Dashboard** — Full CRUD for API keys, provider health summaries, and stats via REST endpoints + a retro-industrial web dashboard (static HTML/CSS/JS served by nginx).
 - **Prometheus + Grafana Observability** — Pre-configured dashboards tracking cache hit rates, provider latency, key switches, and token throughput.
 
 ---
@@ -28,7 +28,7 @@ SwitchBoard sits between your client applications and upstream LLM providers, of
 | LLM Provider        | Groq (OpenAI-compatible)                    |
 | Key Storage         | SQLite + Fernet encryption (`cryptography`) |
 | Schemas / Validation| Pydantic v2                                 |
-| Admin UI            | Streamlit                                   |
+| Admin UI            | Static HTML/CSS/JS + nginx (reverse proxy)  |
 | Metrics             | Prometheus + Grafana                        |
 | HTTP Client         | HTTPX (async)                               |
 | Testing             | pytest + pytest-asyncio                     |
@@ -316,8 +316,9 @@ switchboard/
 ├── cache/
 │   └── redis_client.py      # Semantic cache (embeddings + Redis)
 ├── vis/
-│   ├── app.py               # Streamlit admin dashboard
-│   └── Dockerfile           # Dashboard container
+│   ├── index.html            # Static web dashboard (retro-industrial UI)
+│   ├── default.conf.template # nginx config with reverse proxy to gateway
+│   └── Dockerfile           # nginx:alpine dashboard container
 ├── prometheus/
 │   └── prometheus.yml       # Prometheus scrape config
 ├── grafana/
