@@ -77,45 +77,10 @@ body {
   overflow-x: hidden;
 }
 
-/* Circuit-board background pattern */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.04;
-  background-image:
-    /* Horizontal traces */
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 59px,
-      var(--amber) 59px,
-      var(--amber) 60px
-    ),
-    /* Vertical traces */
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 59px,
-      var(--amber) 59px,
-      var(--amber) 60px
-    );
-  background-size: 60px 60px;
-}
-
-/* Solder-point dots at intersections */
+/* Circuit-board background pattern — disabled for cleaner look */
+body::before,
 body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.06;
-  background-image: radial-gradient(circle 2px at center, var(--copper) 1.5px, transparent 2px);
-  background-size: 60px 60px;
-  background-position: 0 0;
+  display: none;
 }
 
 /* =====================================================================
@@ -328,6 +293,13 @@ body::after {
 .tab-btn .tab-icon {
   font-size: 1rem;
   opacity: 0.7;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tab-btn .tab-icon .icon {
+  width: 16px;
+  height: 16px;
 }
 
 .tab-btn.active .tab-icon { opacity: 1; }
@@ -363,11 +335,38 @@ body::after {
 
 /* Section headings */
 .section-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.3rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 1.15rem;
   color: var(--text-bright);
   margin-bottom: var(--space-lg);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Inline SVG icons */
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.empty-state .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--space-md);
+  opacity: 0.4;
+  color: var(--text-dim);
+}
+
+.empty-state .empty-icon .icon {
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .section-subtitle {
@@ -404,17 +403,9 @@ body::after {
   transform: translateY(-2px);
 }
 
-/* Subtle gauge arc in background */
+/* Subtle gauge arc — removed for cleaner look */
 .metric-card::before {
-  content: '';
-  position: absolute;
-  bottom: -40px;
-  right: -20px;
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  border: 2px solid rgba(212,160,23,0.06);
-  pointer-events: none;
+  display: none;
 }
 
 .metric-card .metric-label {
@@ -426,10 +417,11 @@ body::after {
 }
 
 .metric-card .metric-value {
-  font-size: 1.6rem;
+  font-size: 2.2rem;
   font-weight: 700;
   color: var(--amber);
-  line-height: 1;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .metric-card .metric-value.neutral { color: var(--text-primary); }
@@ -980,11 +972,7 @@ body::after {
   font-size: 0.85rem;
 }
 
-.empty-state .empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: var(--space-md);
-  opacity: 0.3;
-}
+/* empty-state icon styles in section-title block above */
 
 /* Filter bar */
 .filter-bar {
@@ -1056,13 +1044,13 @@ body::after {
   <header class="main-header">
     <nav class="tab-nav" role="tablist">
       <button class="tab-btn active" data-tab="query" role="tab" aria-selected="true">
-        <span class="tab-icon">⚡</span> Test Query
+        <span class="tab-icon"><svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="none" stroke="currentColor" stroke-width="2"/></svg></span> Test Query
       </button>
       <button class="tab-btn" data-tab="keys" role="tab" aria-selected="false">
-        <span class="tab-icon">🔑</span> Key Management
+        <span class="tab-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span> Key Management
       </button>
       <button class="tab-btn" data-tab="usage" role="tab" aria-selected="false">
-        <span class="tab-icon">📊</span> Key Usage
+        <span class="tab-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span> Key Usage
       </button>
     </nav>
   </header>
@@ -1213,7 +1201,7 @@ body::after {
       </div>
 
       <div class="empty-state" id="usage-empty" style="display:none;">
-        <div class="empty-icon">📊</div>
+        <div class="empty-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         No usage data yet. Add keys and send some queries to see stats here.
       </div>
     </section>
@@ -1227,7 +1215,7 @@ body::after {
 <!-- Confirm delete modal -->
 <div class="modal-backdrop" id="delete-modal">
   <div class="modal">
-    <h3>⚠ Confirm Deletion</h3>
+    <h3><svg class="icon" viewBox="0 0 24 24" style="width:1.2em;height:1.2em;vertical-align:-0.2em;stroke:var(--red);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" fill="none" stroke-width="2"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Confirm Deletion</h3>
     <p id="delete-modal-text">Are you sure you want to delete this key? This action cannot be undone.</p>
     <div class="modal-actions">
       <button class="btn btn-secondary btn-sm" id="btn-cancel-delete">Cancel</button>
@@ -1458,8 +1446,8 @@ async function sendQuery() {
         <div class="metric-label">Source</div>
         <div class="metric-value" style="font-size:1rem;">
           ${isCached
-            ? '<span class="badge badge-cache">⚡ Cache</span>'
-            : '<span class="badge badge-model">🧠 Model</span>'}
+            ? '<span class="badge badge-cache"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Cache</span>'
+            : '<span class="badge badge-model"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg> Model</span>'}
         </div>
       </div>
       <div class="metric-card">
@@ -1532,7 +1520,7 @@ function renderKeys() {
   if (filtered.length === 0) {
     $('#key-list').innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">🔑</div>
+        <div class="empty-icon"><svg class="icon" viewBox="0 0 24 24" style="stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
         ${keys.length === 0 ? 'No API keys registered yet. Add one above to get started.' : 'No keys match the current filter.'}
       </div>`;
     return;
