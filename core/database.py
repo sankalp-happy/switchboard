@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
     provider TEXT NOT NULL,
     api_key_encrypted TEXT NOT NULL,
     label TEXT NOT NULL DEFAULT '',
+    base_url TEXT,
+    model_cards TEXT,
     is_enabled INTEGER NOT NULL DEFAULT 1,
     rate_limit_remaining_tokens INTEGER,
     rate_limit_remaining_requests INTEGER,
@@ -96,6 +98,16 @@ async def init_db():
         await db.execute("ALTER TABLE api_keys ADD COLUMN rate_limit_resets_at TEXT")
         await db.commit()
         logger.info("Migrated: added rate_limit_resets_at column")
+
+    if "base_url" not in cols:
+        await db.execute("ALTER TABLE api_keys ADD COLUMN base_url TEXT")
+        await db.commit()
+        logger.info("Migrated: added base_url column")
+
+    if "model_cards" not in cols:
+        await db.execute("ALTER TABLE api_keys ADD COLUMN model_cards TEXT")
+        await db.commit()
+        logger.info("Migrated: added model_cards column")
 
     logger.info("Database schema initialized successfully.")
 

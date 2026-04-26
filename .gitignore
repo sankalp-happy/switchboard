@@ -44,3 +44,10 @@ skills-lock.json
 # Data directory (SQLite DB)
 data/
 *.db
+
+# Test scripts
+test_api.py
+test_stream_api.py
+test_stream.json
+test_nonstream.json
+test_stream_req.json

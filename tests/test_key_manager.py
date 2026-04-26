@@ -204,3 +204,79 @@ async def test_update_rate_limits(km):
     assert row["rate_limit_remaining_tokens"] == 4500
     assert row["rate_limit_remaining_requests"] == 22
     assert row["last_used_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_requires_base_url_and_model_cards(km):
+    with pytest.raises(ValueError, match="base_url is required"):
+        await km.add_key(
+            "openai-compatible",
+            "sk-openai-compatible",
+            "oc-1",
+            model_cards=["gpt-4o-mini"],
+        )
+
+    with pytest.raises(ValueError, match="model_cards is required"):
+        await km.add_key(
+            "openai-compatible",
+            "sk-openai-compatible",
+            "oc-1",
+            base_url="https://example.com/v1",
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_and_list_openai_compatible_with_metadata(km):
+    key_id = await km.add_key(
+        "openai-compatible",
+        "sk-openai-compatible",
+        "oc-main",
+        base_url="https://example.com/v1/",
+        model_cards=["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o-mini"],
+    )
+
+    keys = await km.list_keys(provider="openai-compatible")
+    found = next(k for k in keys if k["id"] == key_id)
+
+    assert found["base_url"] == "https://example.com/v1"
+    assert found["model_cards"] == ["gpt-4o-mini", "gpt-4.1-mini"]
+
+
+@pytest.mark.asyncio
+async def test_get_available_key_for_model_prefers_explicit_match(km):
+    wildcard_id = await km.add_key("groq", "gsk_wildcard", "groq-wildcard")
+    explicit_id = await km.add_key(
+        "openai-compatible",
+        "sk-explicit",
+        "oc-explicit",
+        base_url="https://example.com/v1",
+        model_cards=["gpt-4o-mini"],
+    )
+
+    api_key, key_id, provider, base_url, model_cards = await km.get_available_key_for_model(
+        "gpt-4o-mini",
+        supported_providers={"groq", "openai-compatible"},
+    )
+
+    assert api_key == "sk-explicit"
+    assert key_id == explicit_id
+    assert provider == "openai-compatible"
+    assert base_url == "https://example.com/v1"
+    assert model_cards == ["gpt-4o-mini"]
+    assert key_id != wildcard_id
+
+
+@pytest.mark.asyncio
+async def test_get_available_key_for_model_uses_wildcard_when_no_explicit(km):
+    key_id = await km.add_key("groq", "gsk_wildcard", "groq-wildcard")
+
+    api_key, selected_id, provider, base_url, model_cards = await km.get_available_key_for_model(
+        "llama-3.1-8b-instant",
+        supported_providers={"groq", "openai-compatible"},
+    )
+
+    assert api_key == "gsk_wildcard"
+    assert selected_id == key_id
+    assert provider == "groq"
+    assert base_url is None
+    assert model_cards == []
