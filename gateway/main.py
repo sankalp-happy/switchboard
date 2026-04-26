@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 import logging
+import httpx
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -111,18 +112,40 @@ async def chat_completions(request: ChatCompletionRequest, response: Response):
     if request.stream:
         try:
             stream_gen = router.route_request_stream(request)
+            first_chunk = await stream_gen.__anext__()
+        except StopAsyncIteration:
             return StreamingResponse(
-                stream_gen,
+                iter([]),
                 media_type="text/event-stream",
-                headers={
-                    "X-Cache": "MISS",
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive",
-                },
             )
+        except HTTPException:
+            raise
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            detail = e.response.text[:500]
+            logger.error(f"Stream upstream error {status}: {detail}")
+            raise HTTPException(status_code=502, detail=f"Upstream error {status}: {detail}")
         except Exception as e:
             logger.error(f"Stream request failed: {str(e)}")
             raise HTTPException(status_code=502, detail=f"Bad Gateway: {str(e)}")
+
+        async def _stream_with_first():
+            yield first_chunk
+            try:
+                async for chunk in stream_gen:
+                    yield chunk
+            except Exception as e:
+                logger.error(f"Stream mid-flight error: {e}")
+
+        return StreamingResponse(
+            _stream_with_first(),
+            media_type="text/event-stream",
+            headers={
+                "X-Cache": "MISS",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            },
+        )
 
     # Non-streaming path
     highest_similarity = -1.0

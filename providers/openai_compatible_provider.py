@@ -123,7 +123,13 @@ class OpenAICompatibleProvider(LLMProvider):
             headers=self.headers,
             json=payload,
         ) as response:
-            response.raise_for_status()
+            if response.status_code >= 400:
+                body = await response.aread()
+                raise httpx.HTTPStatusError(
+                    f"Client error '{response.status_code} {response.reason_phrase}' for url '{response.url}'",
+                    request=response.request,
+                    response=response,
+                )
             async for chunk in response.aiter_bytes():
                 yield chunk
 
