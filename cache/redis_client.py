@@ -21,6 +21,21 @@ class RedisCache:
 # Increased threshold to 0.9 to avoid false positive matches between distinct semantic statements
         self.similarity_threshold = 0.9
 
+    def _extract_text(self, messages) -> str:
+        parts = []
+        for m in messages:
+            if not m.content:
+                continue
+            if isinstance(m.content, str):
+                parts.append(m.content)
+            elif isinstance(m.content, list):
+                for part in m.content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        parts.append(part.get("text", ""))
+                    elif isinstance(part, str):
+                        parts.append(part)
+        return " ".join(parts)
+
     def _get_embedding(self, text: str) -> np.ndarray:
         """Helper to generate an embedding for the given text using Gemini."""
         try:
@@ -48,7 +63,7 @@ class RedisCache:
     async def get_cached_response(self, request: ChatCompletionRequest) -> Tuple[Optional[ChatCompletionResponse], float]:
         """Fetch a cached response if available using semantic caching, and return the highest similarity."""
         # 1. Combine messages into a single text for embedding
-        messages_text = " ".join([m.content for m in request.messages if m.content])
+        messages_text = self._extract_text(request.messages)
         if not messages_text:
             return None, -1.0
             
@@ -102,7 +117,7 @@ class RedisCache:
     async def set_cached_response(self, request: ChatCompletionRequest, response: ChatCompletionResponse):
         """Store a response in the cache along with its embedding."""
         
-        messages_text = " ".join([m.content for m in request.messages if m.content])
+        messages_text = self._extract_text(request.messages)
         request_embedding = self._get_embedding(messages_text)
         
         if request_embedding is None:
