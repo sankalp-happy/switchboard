@@ -24,6 +24,8 @@ class ChatCompletionRequest(BaseModel):
     seed: Optional[int] = None
     tools: Optional[List[Dict[str, Any]]] = None
     tool_choice: Optional[Union[str, Dict[str, Any]]] = None
+    similarity: Optional[str] = None
+    model_use: Optional[bool] = True
 
 class Usage(BaseModel):
     prompt_tokens: int = 0

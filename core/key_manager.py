@@ -15,6 +15,20 @@ from cryptography.fernet import Fernet
 from core.config import settings
 from core.database import get_db
 
+
+class _UnsetType:
+    _instance = None
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    def __repr__(self):
+        return "UNSET"
+    def __bool__(self):
+        return False
+
+UNSET = _UnsetType()
+
 logger = logging.getLogger("switchboard.key_manager")
 
 
@@ -200,6 +214,89 @@ class KeyManager:
         )
         await db.commit()
         return cursor.rowcount > 0
+
+    async def update_key(
+        self,
+        key_id: int,
+        provider: Optional[str] = None,
+        api_key: Optional[str] = None,
+        label: Optional[str] = None,
+        base_url: Any = UNSET,
+        model_cards: Any = UNSET,
+        is_enabled: Optional[bool] = None,
+    ) -> bool:
+        db = await get_db()
+        cursor = await db.execute(
+            "SELECT id, provider, base_url FROM api_keys WHERE id = ?", (key_id,)
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return False
+
+        effective_provider = (provider or row["provider"]).lower()
+        existing_base_url = row["base_url"]
+
+        sets = []
+        vals = []
+
+        if provider is not None:
+            sets.append("provider = ?")
+            vals.append(provider.lower())
+
+        if api_key is not None:
+            encrypted = encrypt_key(api_key)
+            sets.append("api_key_encrypted = ?")
+            vals.append(encrypted)
+
+        if label is not None:
+            sets.append("label = ?")
+            vals.append(label)
+
+        if base_url is not UNSET:
+            normalized = self._normalize_base_url(base_url) if isinstance(base_url, str) else None
+            if effective_provider == "openai-compatible" and not normalized and not existing_base_url:
+                raise ValueError("base_url is required for provider 'openai-compatible'")
+            sets.append("base_url = ?")
+            vals.append(normalized)
+
+        if model_cards is not UNSET:
+            cleaned = self._normalize_model_cards(model_cards)
+            sets.append("model_cards = ?")
+            vals.append(json.dumps(cleaned) if cleaned else None)
+
+        if is_enabled is not None:
+            sets.append("is_enabled = ?")
+            vals.append(1 if is_enabled else 0)
+
+        if not sets:
+            return True
+
+        vals.append(key_id)
+        sql = f"UPDATE api_keys SET {', '.join(sets)} WHERE id = ?"
+        await db.execute(sql, vals)
+        await db.commit()
+        logger.info(f"Updated key id={key_id} fields={sets}")
+        return True
+
+    async def get_key_rate_limits(self, key_id: int) -> Optional[Dict[str, Any]]:
+        db = await get_db()
+        cursor = await db.execute(
+            """SELECT rate_limit_remaining_tokens, rate_limit_remaining_requests,
+                      rate_limit_reset_tokens, rate_limit_reset_requests,
+                      rate_limit_resets_at
+               FROM api_keys WHERE id = ?""",
+            (key_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        return {
+            "remaining_tokens": row["rate_limit_remaining_tokens"],
+            "remaining_requests": row["rate_limit_remaining_requests"],
+            "reset_tokens": row["rate_limit_reset_tokens"],
+            "reset_requests": row["rate_limit_reset_requests"],
+            "resets_at": row["rate_limit_resets_at"],
+        }
 
     # ---- key selection ----
 

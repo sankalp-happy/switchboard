@@ -14,7 +14,7 @@ from core.database import init_db, cleanup_old_buckets
 from core.key_manager import key_manager
 from core.metrics import CACHE_HITS, CACHE_MISSES, ACTIVE_KEYS
 from routing.router import Router
-from cache.redis_client import RedisCache
+from cache.redis_client import RedisCache, resolve_similarity_threshold
 from gateway.admin import admin_router
 
 # Setup logging
@@ -147,23 +147,32 @@ async def chat_completions(request: ChatCompletionRequest, response: Response):
             },
         )
 
-    # Non-streaming path
-    highest_similarity = -1.0
-    try:
-        cached_response, highest_similarity = await cache.get_cached_response(request)
-        if cached_response:
-            logger.info("Cache hit!")
-            CACHE_HITS.inc()
-            response.headers["X-Cache"] = "HIT"
-            response.headers["X-Semantic-Similarity"] = f"{highest_similarity:.4f}"
-            return cached_response
-    except Exception as e:
-        logger.warning(f"Failed to fetch from cache: {str(e)}")
+    threshold = resolve_similarity_threshold(request.similarity)
+    use_model = request.model_use if request.model_use is not None else True
+    is_aggressive = request.similarity == "aggressive"
 
-    CACHE_MISSES.inc()
+    if not use_model:
+        try:
+            cached_response, sim = await cache.get_cached_response(
+                request, similarity_threshold=threshold,
+            )
+            if cached_response:
+                CACHE_HITS.inc()
+                response.headers["X-Cache"] = "HIT"
+                response.headers["X-Semantic-Similarity"] = f"{sim:.4f}"
+                response.headers["X-Model-Use"] = "false"
+                body = cached_response.model_dump()
+                body["similarity"] = round(sim, 4)
+                return body
+        except Exception as e:
+            logger.warning(f"Cache lookup failed: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail="model_use=false and no cached response available",
+        )
 
     try:
-        logger.info("Cache miss. Routing request to provider.")
+        logger.info("Routing request to provider.")
         provider_result = await router.route_request(request)
 
         try:
@@ -171,14 +180,35 @@ async def chat_completions(request: ChatCompletionRequest, response: Response):
         except Exception as e:
             logger.warning(f"Failed to write to cache: {str(e)}")
 
+        body = provider_result.response.model_dump()
+        rate_limits = await key_manager.get_key_rate_limits(provider_result.key_id)
+        if rate_limits:
+            body["rate_limits"] = rate_limits
         response.headers["X-Cache"] = "MISS"
         response.headers["X-Provider"] = provider_result.provider
         response.headers["X-Latency-Ms"] = f"{provider_result.latency_ms:.1f}"
-        if highest_similarity >= -1.0:
-            response.headers["X-Semantic-Similarity"] = f"{highest_similarity:.4f}"
-        return provider_result.response
+        return body
     except Exception as e:
         logger.error(f"Provider request failed: {str(e)}")
+
+        try:
+            fallback_resp, fallback_sim = await cache.get_cached_response(
+                request,
+                similarity_threshold=threshold,
+                aggressive_fallback=is_aggressive,
+            )
+            if fallback_resp:
+                logger.info(f"Cache fallback hit! similarity={fallback_sim:.4f}")
+                CACHE_HITS.inc()
+                response.headers["X-Cache"] = "FALLBACK"
+                response.headers["X-Semantic-Similarity"] = f"{fallback_sim:.4f}"
+                response.headers["X-Fallback-Reason"] = "provider-failure"
+                body = fallback_resp.model_dump()
+                body["similarity"] = round(fallback_sim, 4)
+                return body
+        except Exception as fallback_err:
+            logger.warning(f"Cache fallback also failed: {fallback_err}")
+
         raise HTTPException(status_code=502, detail=f"Bad Gateway: {str(e)}")
 
 

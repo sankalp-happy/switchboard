@@ -933,6 +933,40 @@ body::after {
 
 .modal p { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: var(--space-lg); }
 
+.modal-edit {
+  background: var(--bg-surface);
+  border: 1px solid var(--amber);
+  border-radius: var(--radius-md);
+  padding: var(--space-xl);
+  max-width: 520px;
+  text-align: left;
+  box-shadow: 0 0 30px rgba(212,160,23,0.15);
+}
+
+.modal-edit h3 {
+  font-family: var(--font-display);
+  color: var(--amber);
+  margin-bottom: var(--space-lg);
+}
+
+.modal-edit .form-group {
+  margin-bottom: var(--space-md);
+}
+
+.modal-edit .form-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin-bottom: var(--space-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modal-edit .form-input,
+.modal-edit .form-select {
+  width: 100%;
+}
+
 .modal-actions {
   display: flex;
   justify-content: center;
@@ -1036,7 +1070,7 @@ body::after {
 
     <div class="sidebar-footer">
       Auto-refreshes every 10s<br>
-      <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> — switch tabs
+      <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> — switch tabs
     </div>
   </aside>
 
@@ -1053,6 +1087,9 @@ body::after {
       </button>
       <button class="tab-btn" data-tab="usage" role="tab" aria-selected="false">
         <span class="tab-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span> Key Usage
+      </button>
+      <button class="tab-btn" data-tab="cache" role="tab" aria-selected="false">
+        <span class="tab-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> Cache Settings
       </button>
     </nav>
   </header>
@@ -1085,6 +1122,25 @@ body::after {
         <div class="form-group">
           <label class="form-label" for="q-user">User Prompt</label>
           <textarea class="form-textarea" id="q-user" rows="3" placeholder="Ask something…">What is the capital of France?</textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="q-similarity">Similarity</label>
+            <select class="form-select" id="q-similarity">
+              <option value="">Default (balanced)</option>
+              <option value="strict">Strict (0.95)</option>
+              <option value="balanced">Balanced (0.9)</option>
+              <option value="aggressive">Aggressive (0.6)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="q-model-use">Use Model</label>
+            <select class="form-select" id="q-model-use">
+              <option value="true">Yes — call model on miss</option>
+              <option value="false">No — cache only</option>
+            </select>
+          </div>
         </div>
 
         <button class="btn btn-primary" id="btn-send-query">
@@ -1219,6 +1275,54 @@ body::after {
       </div>
     </section>
 
+    <!-- =========== TAB 4: CACHE SETTINGS =========== -->
+    <section class="tab-panel" id="panel-cache">
+      <h2 class="section-title">Cache Settings</h2>
+
+      <div class="card riveted" style="max-width: 640px; margin-bottom: var(--space-xl);">
+        <div class="section-subtitle">Configuration</div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="cs-ttl">Cache TTL (seconds)</label>
+            <input class="form-input" id="cs-ttl" type="number" min="1" step="1" placeholder="3600">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cs-threshold">Similarity Threshold</label>
+            <input class="form-input" id="cs-threshold" type="number" min="0" max="1" step="0.01" placeholder="0.9">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:var(--space-md);align-items:center;">
+          <button class="btn btn-primary" id="btn-save-cache-config">Save Config</button>
+          <button class="btn btn-secondary" id="btn-refresh-cache-config">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="card riveted" style="max-width: 640px; margin-bottom: var(--space-xl);">
+        <div class="section-subtitle">Cache Stats</div>
+
+        <div class="metric-row" id="cache-stats-metrics">
+          <div class="metric-card"><div class="metric-label">Cached Entries</div><div class="metric-value neutral" id="csm-entries">—</div></div>
+          <div class="metric-card"><div class="metric-label">TTL</div><div class="metric-value neutral" id="csm-ttl">—</div></div>
+          <div class="metric-card"><div class="metric-label">Threshold</div><div class="metric-value neutral" id="csm-threshold">—</div></div>
+        </div>
+
+        <div style="margin-top:var(--space-md);">
+          <div class="section-subtitle">Similarity Presets</div>
+          <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;" id="cache-presets"></div>
+        </div>
+      </div>
+
+      <div class="card riveted" style="max-width: 640px;">
+        <div class="section-subtitle">Danger Zone</div>
+        <p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:var(--space-md);">
+          Flushing the cache will delete all cached responses immediately. This cannot be undone.
+        </p>
+        <button class="btn btn-danger" id="btn-flush-cache">Flush All Cache Entries</button>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -1233,6 +1337,49 @@ body::after {
     <div class="modal-actions">
       <button class="btn btn-secondary btn-sm" id="btn-cancel-delete">Cancel</button>
       <button class="btn btn-danger btn-sm" id="btn-confirm-delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit key modal -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal-edit">
+    <h3>Edit Key</h3>
+    <input type="hidden" id="ek-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="ek-provider">Provider</label>
+        <select class="form-select" id="ek-provider">
+          <option value="groq">Groq</option>
+          <option value="openai-compatible">OpenAI Compatible</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="google">Google</option>
+          <option value="local">Local</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ek-label">Label</label>
+        <input class="form-input" id="ek-label" type="text" placeholder="e.g. prod-key-1">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="ek-key">API Key (leave blank to keep current)</label>
+      <input class="form-input" id="ek-key" type="password" placeholder="Enter new key or leave blank">
+    </div>
+    <div id="ek-openai-extra" style="display:none;">
+      <div class="form-group">
+        <label class="form-label" for="ek-base-url">Base URL</label>
+        <input class="form-input" id="ek-base-url" type="text" placeholder="https://your-endpoint/v1">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ek-model-cards">Model Cards (comma-separated)</label>
+        <input class="form-input" id="ek-model-cards" type="text" placeholder="gpt-4o-mini, llama-3.1-8b-instant">
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:var(--space-lg);">
+      <button class="btn btn-secondary btn-sm" id="btn-cancel-edit">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="btn-save-edit">Save Changes</button>
     </div>
   </div>
 </div>
@@ -1372,6 +1519,7 @@ function initTabs() {
     if (e.key === '1') switchTab('query');
     if (e.key === '2') switchTab('keys');
     if (e.key === '3') switchTab('usage');
+    if (e.key === '4') switchTab('cache');
   });
 }
 
@@ -1385,6 +1533,7 @@ function switchTab(tab) {
   // Lazy-load data
   if (tab === 'keys') loadKeys();
   if (tab === 'usage') loadUsage();
+  if (tab === 'cache') loadCacheConfig();
 }
 
 /* =====================================================================
@@ -1423,6 +1572,11 @@ async function sendQuery() {
     stream: false,
   };
 
+  const similarity = $('#q-similarity').value;
+  const modelUse = $('#q-model-use').value;
+  if (similarity) payload.similarity = similarity;
+  if (modelUse === 'false') payload.model_use = false;
+
   const t0 = performance.now();
   try {
     const res = await fetch(`${API_BASE}/v1/chat/completions`, {
@@ -1446,10 +1600,20 @@ async function sendQuery() {
 
     const xCache = res.headers.get('X-Cache');
     const xSim = res.headers.get('X-Semantic-Similarity');
-    const isCached = xCache ? xCache === 'HIT' : parseFloat(latency) < 0.2;
+    const xFallback = res.headers.get('X-Fallback-Reason');
+    const xModelUse = res.headers.get('X-Model-Use');
+    const isCached = xCache === 'HIT' || xCache === 'FALLBACK' || (!xCache && parseFloat(latency) < 0.2);
     const tokens = data?.usage?.total_tokens ?? '—';
 
-    // Render metrics
+    let sourceBadge;
+    if (xCache === 'FALLBACK') {
+      sourceBadge = '<span class="badge" style="background:rgba(192,57,43,0.15);color:#e74c3c;border:1px solid rgba(192,57,43,0.25);">⚠ Fallback</span>';
+    } else if (isCached) {
+      sourceBadge = '<span class="badge badge-cache"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Cache</span>';
+    } else {
+      sourceBadge = '<span class="badge badge-model"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg> Model</span>';
+    }
+
     const metricsHtml = `
       <div class="metric-card">
         <div class="metric-label">Latency</div>
@@ -1458,9 +1622,8 @@ async function sendQuery() {
       <div class="metric-card">
         <div class="metric-label">Source</div>
         <div class="metric-value" style="font-size:1rem;">
-          ${isCached
-            ? '<span class="badge badge-cache"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Cache</span>'
-            : '<span class="badge badge-model"><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg> Model</span>'}
+          ${sourceBadge}
+          ${xModelUse === 'false' ? '<span class="badge" style="background:rgba(74,158,140,0.15);color:#6bc9b4;border:1px solid rgba(74,158,140,0.25);">Cache-only</span>' : ''}
         </div>
       </div>
       <div class="metric-card">
@@ -1561,6 +1724,7 @@ function renderKeys() {
             <input type="checkbox" ${k.is_enabled ? 'checked' : ''} onchange="toggleKey(${k.id}, this.checked)">
             <span class="toggle-slider"></span>
           </label>
+          <button class="btn btn-secondary btn-sm" onclick="openEditModal(${k.id})" title="Edit key">✎</button>
           <button class="btn btn-danger btn-sm" onclick="confirmDelete(${k.id})" title="Delete key">✕</button>
         </div>
       </div>
@@ -1667,6 +1831,72 @@ async function addKey() {
 
   btn.disabled = false;
   btn.textContent = 'Add Key';
+}
+
+/* =====================================================================
+    EDIT KEY
+    ===================================================================== */
+function openEditModal(keyId) {
+  const k = state.keys.find(k => k.id === keyId);
+  if (!k) { toast('Key not found', 'error'); return; }
+
+  $('#ek-id').value = k.id;
+  $('#ek-provider').value = k.provider || 'groq';
+  $('#ek-label').value = k.label || '';
+  $('#ek-key').value = '';
+  $('#ek-base-url').value = k.base_url || '';
+  $('#ek-model-cards').value = Array.isArray(k.model_cards) ? k.model_cards.join(', ') : '';
+
+  syncEditProviderFields();
+  $('#edit-modal').classList.add('visible');
+}
+
+function syncEditProviderFields() {
+  const provider = $('#ek-provider').value;
+  $('#ek-openai-extra').style.display = provider === 'openai-compatible' ? 'block' : 'none';
+}
+
+async function saveEditKey() {
+  const keyId = parseInt($('#ek-id').value, 10);
+  const provider = $('#ek-provider').value;
+  const label = $('#ek-label').value.trim();
+  const apiKey = $('#ek-key').value.trim();
+  const baseUrl = $('#ek-base-url').value.trim();
+  const modelCardsRaw = $('#ek-model-cards').value.trim();
+
+  const payload = {};
+  if (provider) payload.provider = provider;
+  if (label) payload.label = label;
+  if (apiKey) payload.api_key = apiKey;
+  if (provider === 'openai-compatible') {
+    if (baseUrl) payload.base_url = baseUrl;
+    const cards = modelCardsRaw.split(',').map(c => c.trim()).filter(Boolean);
+    if (cards.length) payload.model_cards = cards;
+  } else {
+    if (baseUrl) payload.base_url = baseUrl;
+    if (modelCardsRaw) payload.model_cards = modelCardsRaw.split(',').map(c => c.trim()).filter(Boolean);
+  }
+
+  if (!Object.keys(payload).length) { toast('No changes to save', 'error'); return; }
+
+  const btn = $('#btn-save-edit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  try {
+    const res = await api('PUT', `/admin/keys/${keyId}`, payload);
+    if (res.ok) {
+      toast('Key updated');
+      $('#edit-modal').classList.remove('visible');
+      loadKeys();
+    } else {
+      const errText = await res.text();
+      toast(`Update failed: ${errText}`, 'error');
+    }
+  } catch (e) { toast(`Request failed: ${e.message}`, 'error'); }
+
+  btn.disabled = false;
+  btn.textContent = 'Save Changes';
 }
 
 /* =====================================================================
@@ -1781,20 +2011,113 @@ function renderUsage() {
 }
 
 /* =====================================================================
+   TAB 4: CACHE SETTINGS
+   ===================================================================== */
+function initCache() {
+  $('#btn-save-cache-config').addEventListener('click', saveCacheConfig);
+  $('#btn-refresh-cache-config').addEventListener('click', loadCacheConfig);
+  $('#btn-flush-cache').addEventListener('click', async () => {
+    if (!confirm('Flush ALL cached entries? This cannot be undone.')) return;
+    await flushCache();
+  });
+}
+
+async function loadCacheConfig() {
+  if (!state.backendOk) return;
+  try {
+    const res = await api('GET', '/admin/cache/config');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    $('#cs-ttl').value = data.ttl ?? '';
+    $('#cs-threshold').value = data.similarity_threshold ?? '';
+    $('#csm-entries').textContent = data.entry_count ?? '—';
+    $('#csm-ttl').textContent = data.ttl ? `${data.ttl}s` : '—';
+    $('#csm-threshold').textContent = data.similarity_threshold ?? '—';
+
+    if (data.presets) {
+      $('#cache-presets').innerHTML = Object.entries(data.presets).map(([name, val]) =>
+        `<div class="metric-card"><div class="metric-label">${name}</div><div class="metric-value neutral">${val}</div></div>`
+      ).join('');
+    }
+  } catch { toast('Failed to load cache config', 'error'); }
+}
+
+async function saveCacheConfig() {
+  const ttl = $('#cs-ttl').value ? parseInt($('#cs-ttl').value, 10) : undefined;
+  const threshold = $('#cs-threshold').value ? parseFloat($('#cs-threshold').value) : undefined;
+
+  const payload = {};
+  if (ttl !== undefined && !isNaN(ttl)) payload.ttl = ttl;
+  if (threshold !== undefined && !isNaN(threshold)) payload.similarity_threshold = threshold;
+
+  if (!Object.keys(payload).length) { toast('No changes to save', 'error'); return; }
+
+  const btn = $('#btn-save-cache-config');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  try {
+    const res = await api('PUT', '/admin/cache/config', payload);
+    if (res.ok) {
+      toast('Cache config saved');
+      await loadCacheConfig();
+    } else {
+      const err = await res.text();
+      toast(`Save failed: ${err}`, 'error');
+    }
+  } catch { toast('Request failed', 'error'); }
+
+  btn.disabled = false;
+  btn.textContent = 'Save Config';
+}
+
+async function flushCache() {
+  const btn = $('#btn-flush-cache');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Flushing…';
+
+  try {
+    const res = await api('POST', '/admin/cache/flush');
+    if (res.ok) {
+      const data = await res.json();
+      toast(`Flushed ${data.deleted_count ?? 0} entries`);
+      await loadCacheConfig();
+    } else {
+      toast('Flush failed', 'error');
+    }
+  } catch { toast('Request failed', 'error'); }
+
+  btn.disabled = false;
+  btn.textContent = 'Flush All Cache Entries';
+}
+
+/* =====================================================================
    DELETE MODAL
    ===================================================================== */
 function initModals() {
+  // Delete modal
   $('#btn-cancel-delete').addEventListener('click', () => {
     $('#delete-modal').classList.remove('visible');
     state.deleteTargetId = null;
   });
   $('#btn-confirm-delete').addEventListener('click', executeDelete);
-
-  // Close on backdrop click
   $('#delete-modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) {
       e.currentTarget.classList.remove('visible');
       state.deleteTargetId = null;
+    }
+  });
+
+  // Edit modal
+  $('#btn-cancel-edit').addEventListener('click', () => {
+    $('#edit-modal').classList.remove('visible');
+  });
+  $('#btn-save-edit').addEventListener('click', saveEditKey);
+  $('#ek-provider').addEventListener('change', syncEditProviderFields);
+  $('#edit-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) {
+      e.currentTarget.classList.remove('visible');
     }
   });
 }
@@ -1807,6 +2130,7 @@ async function init() {
   initQuery();
   initKeys();
   initUsage();
+  initCache();
   initModals();
 
   // Initial health check

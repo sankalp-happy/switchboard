@@ -5,13 +5,14 @@ Mounted at /admin in the gateway.
 
 import json
 import logging
-from typing import Optional, List
+from typing import Any, Optional, List
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from core.key_manager import key_manager
+from core.key_manager import key_manager, UNSET
 from core.database import get_db, get_usage_stats
+from cache.redis_client import get_cache_config, set_cache_config
 from providers.groq_provider import GroqProvider
 from providers.openai_compatible_provider import OpenAICompatibleProvider
 
@@ -32,6 +33,21 @@ class AddKeyRequest(BaseModel):
 
 class ToggleKeyRequest(BaseModel):
     is_enabled: bool
+
+class UpdateKeyRequest(BaseModel):
+    provider: Optional[str] = None
+    api_key: Optional[str] = None
+    label: Optional[str] = None
+    base_url: Any = UNSET
+    model_cards: Any = UNSET
+    is_enabled: Optional[bool] = None
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class CacheConfigRequest(BaseModel):
+    ttl: Optional[int] = None
+    similarity_threshold: Optional[float] = None
 
 
 # ---- endpoints ----
@@ -75,6 +91,26 @@ async def toggle_key(key_id: int, body: ToggleKeyRequest):
     if not updated:
         raise HTTPException(status_code=404, detail="Key not found")
     return {"message": f"Key {'enabled' if body.is_enabled else 'disabled'}"}
+
+
+@admin_router.put("/keys/{key_id}")
+async def update_key(key_id: int, body: UpdateKeyRequest):
+    """Update editable fields of an API key."""
+    try:
+        updated = await key_manager.update_key(
+            key_id,
+            provider=body.provider,
+            api_key=body.api_key,
+            label=body.label,
+            base_url=body.base_url,
+            model_cards=body.model_cards,
+            is_enabled=body.is_enabled,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not updated:
+        raise HTTPException(status_code=404, detail="Key not found")
+    return {"message": "Key updated"}
 
 
 @admin_router.get("/providers")
@@ -195,3 +231,33 @@ async def discover_models(key_id: int):
     await db.commit()
 
     return {"key_id": key_id, "discovered_models": model_ids, "count": len(model_ids)}
+
+
+@admin_router.get("/cache/config")
+async def get_cache_config_endpoint():
+    """Get current cache configuration (TTL, similarity threshold, presets)."""
+    from cache.redis_client import RedisCache
+    config = get_cache_config()
+    cache = RedisCache()
+    stats = await cache.get_cache_stats()
+    return {**config, "entry_count": stats["entry_count"], "similarity_presets": stats["similarity_presets"]}
+
+
+@admin_router.put("/cache/config")
+async def update_cache_config(body: CacheConfigRequest):
+    """Update cache configuration (TTL and/or similarity threshold)."""
+    if body.ttl is not None and body.ttl < 1:
+        raise HTTPException(status_code=400, detail="TTL must be at least 1 second")
+    if body.similarity_threshold is not None and not (0.0 <= body.similarity_threshold <= 1.0):
+        raise HTTPException(status_code=400, detail="Similarity threshold must be between 0.0 and 1.0")
+    set_cache_config(ttl=body.ttl, similarity_threshold=body.similarity_threshold)
+    return get_cache_config()
+
+
+@admin_router.post("/cache/flush")
+async def flush_cache():
+    """Delete all cached entries."""
+    from cache.redis_client import RedisCache
+    cache = RedisCache()
+    count = await cache.flush_cache()
+    return {"flushed": count}
