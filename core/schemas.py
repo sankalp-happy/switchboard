@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any, Union
 class ChatMessage(BaseModel):
     model_config = {"extra": "allow"}
     role: str
-    content: Optional[str] = None
+    content: Optional[Union[str, List[Any]]] = None
 
 class ChatCompletionRequest(BaseModel):
     model_config = {"extra": "allow"}
