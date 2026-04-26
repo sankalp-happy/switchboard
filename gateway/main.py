@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import asyncio
@@ -7,7 +7,7 @@ import logging
 
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from core.schemas import ChatCompletionRequest, ChatCompletionResponse
+from core.schemas import ChatCompletionRequest
 from core.config import settings
 from core.database import init_db, cleanup_old_buckets
 from core.key_manager import key_manager
@@ -104,11 +104,27 @@ router = Router()
 cache = RedisCache()
 
 
-@app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
+@app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest, response: Response):
-    logger.info(f"Received request for model: {request.model}")
+    logger.info(f"Received request for model: {request.model} stream={request.stream}")
 
-    # 1. Check Cache
+    if request.stream:
+        try:
+            stream_gen = router.route_request_stream(request)
+            return StreamingResponse(
+                stream_gen,
+                media_type="text/event-stream",
+                headers={
+                    "X-Cache": "MISS",
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                },
+            )
+        except Exception as e:
+            logger.error(f"Stream request failed: {str(e)}")
+            raise HTTPException(status_code=502, detail=f"Bad Gateway: {str(e)}")
+
+    # Non-streaming path
     highest_similarity = -1.0
     try:
         cached_response, highest_similarity = await cache.get_cached_response(request)
@@ -123,12 +139,10 @@ async def chat_completions(request: ChatCompletionRequest, response: Response):
 
     CACHE_MISSES.inc()
 
-    # 2. Route Request to Provider (with automatic key rotation)
     try:
         logger.info("Cache miss. Routing request to provider.")
         provider_result = await router.route_request(request)
 
-        # 3. Store in Cache
         try:
             await cache.set_cached_response(request, provider_result.response)
         except Exception as e:
@@ -143,6 +157,26 @@ async def chat_completions(request: ChatCompletionRequest, response: Response):
     except Exception as e:
         logger.error(f"Provider request failed: {str(e)}")
         raise HTTPException(status_code=502, detail=f"Bad Gateway: {str(e)}")
+
+
+@app.get("/v1/models")
+async def list_models():
+    keys = await key_manager.list_keys()
+    seen = set()
+    models = []
+    for k in keys:
+        if not k.get("is_enabled"):
+            continue
+        for model_name in k.get("model_cards", []):
+            if model_name not in seen:
+                seen.add(model_name)
+                models.append({
+                    "id": model_name,
+                    "object": "model",
+                    "created": 0,
+                    "owned_by": k["provider"],
+                })
+    return {"object": "list", "data": models}
 
 
 @app.get("/health")

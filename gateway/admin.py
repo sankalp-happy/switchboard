@@ -3,14 +3,17 @@ Admin API — CRUD for API keys and provider management.
 Mounted at /admin in the gateway.
 """
 
+import json
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.key_manager import key_manager
-from core.database import get_usage_stats
+from core.database import get_db, get_usage_stats
+from providers.groq_provider import GroqProvider
+from providers.openai_compatible_provider import OpenAICompatibleProvider
 
 logger = logging.getLogger("switchboard.admin")
 
@@ -23,6 +26,8 @@ class AddKeyRequest(BaseModel):
     provider: str
     api_key: str
     label: str = ""
+    base_url: Optional[str] = None
+    model_cards: Optional[List[str]] = None
 
 
 class ToggleKeyRequest(BaseModel):
@@ -34,11 +39,16 @@ class ToggleKeyRequest(BaseModel):
 @admin_router.post("/keys")
 async def add_key(body: AddKeyRequest):
     """Add a new API key for a provider."""
-    key_id = await key_manager.add_key(
-        provider=body.provider,
-        api_key=body.api_key,
-        label=body.label,
-    )
+    try:
+        key_id = await key_manager.add_key(
+            provider=body.provider,
+            api_key=body.api_key,
+            label=body.label,
+            base_url=body.base_url,
+            model_cards=body.model_cards,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return {"id": key_id, "message": "Key added successfully"}
 
 
@@ -144,3 +154,44 @@ async def get_stats():
             for k in all_keys
         ],
     }
+
+
+@admin_router.post("/discover-models/{key_id}")
+async def discover_models(key_id: int):
+    """Fetch available models from a provider's API and update that key's model_cards."""
+    keys = await key_manager.list_keys()
+    key = next((k for k in keys if k["id"] == key_id), None)
+    if not key:
+        raise HTTPException(status_code=404, detail="Key not found")
+
+    provider_name = key["provider"]
+    try:
+        api_key_plain = await key_manager.decrypt_key_by_id(key_id)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to decrypt API key")
+
+    if provider_name == "groq":
+        provider = GroqProvider(api_key=api_key_plain)
+    elif provider_name == "openai-compatible":
+        base_url = key.get("base_url")
+        if not base_url:
+            raise HTTPException(status_code=400, detail="Key has no base_url configured")
+        provider = OpenAICompatibleProvider(api_key=api_key_plain, base_url=base_url, provider_name=provider_name)
+    else:
+        raise HTTPException(status_code=400, detail=f"Model discovery not supported for provider '{provider_name}'")
+
+    models = await provider.list_models()
+    if not models:
+        raise HTTPException(status_code=502, detail="No models returned from provider API")
+
+    model_ids = [m.get("id", m.get("name", "")) for m in models if m.get("id") or m.get("name")]
+    model_ids = [m for m in model_ids if m]
+
+    db = await get_db()
+    await db.execute(
+        "UPDATE api_keys SET model_cards = ? WHERE id = ?",
+        (json.dumps(model_ids), key_id),
+    )
+    await db.commit()
+
+    return {"key_id": key_id, "discovered_models": model_ids, "count": len(model_ids)}

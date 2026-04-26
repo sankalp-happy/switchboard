@@ -59,6 +59,61 @@ async def test_add_and_list_keys():
         found = [k for k in keys if k["id"] == key_id][0]
         assert "gsk_test123" not in str(found)
         assert found["api_key_masked"].startswith("gsk_")
+        assert found["base_url"] is None
+        assert found["model_cards"] == []
+
+
+@pytest.mark.asyncio
+async def test_add_openai_compatible_key():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/admin/keys",
+            json={
+                "provider": "openai-compatible",
+                "api_key": "sk_test_openai_compatible",
+                "label": "oc-1",
+                "base_url": "https://example.com/v1/",
+                "model_cards": ["gpt-4o-mini", "gpt-4.1-mini"],
+            },
+        )
+        assert resp.status_code == 200
+
+        resp = await client.get("/admin/keys?provider=openai-compatible")
+        assert resp.status_code == 200
+        keys = resp.json()["keys"]
+        assert len(keys) == 1
+        assert keys[0]["base_url"] == "https://example.com/v1"
+        assert keys[0]["model_cards"] == ["gpt-4o-mini", "gpt-4.1-mini"]
+
+
+@pytest.mark.asyncio
+async def test_add_openai_compatible_requires_base_url_and_model_cards():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/admin/keys",
+            json={
+                "provider": "openai-compatible",
+                "api_key": "sk_test_openai_compatible",
+                "label": "oc-1",
+                "model_cards": ["gpt-4o-mini"],
+            },
+        )
+        assert resp.status_code == 400
+        assert "base_url is required" in resp.text
+
+        resp = await client.post(
+            "/admin/keys",
+            json={
+                "provider": "openai-compatible",
+                "api_key": "sk_test_openai_compatible",
+                "label": "oc-1",
+                "base_url": "https://example.com/v1",
+            },
+        )
+        assert resp.status_code == 400
+        assert "model_cards is required" in resp.text
 
 
 @pytest.mark.asyncio

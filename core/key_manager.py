@@ -5,8 +5,10 @@ rate-limit tracking, and key selection for provider routing.
 
 import logging
 import re
+import json
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List, Dict, Any, Set
+from urllib.parse import urlparse
 
 from cryptography.fernet import Fernet
 
@@ -114,12 +116,31 @@ class KeyManager:
         provider: str,
         api_key: str,
         label: str = "",
+        base_url: Optional[str] = None,
+        model_cards: Optional[List[str]] = None,
     ) -> int:
+        provider_normalized = provider.lower()
+        normalized_base_url = self._normalize_base_url(base_url)
+        normalized_model_cards = self._normalize_model_cards(model_cards)
+
+        if provider_normalized == "openai-compatible":
+            if not normalized_base_url:
+                raise ValueError("base_url is required for provider 'openai-compatible'")
+
         encrypted = encrypt_key(api_key)
         db = await get_db()
         cursor = await db.execute(
-            "INSERT INTO api_keys (provider, api_key_encrypted, label) VALUES (?, ?, ?)",
-            (provider.lower(), encrypted, label),
+            """
+            INSERT INTO api_keys (provider, api_key_encrypted, label, base_url, model_cards)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                provider_normalized,
+                encrypted,
+                label,
+                normalized_base_url,
+                json.dumps(normalized_model_cards) if normalized_model_cards else None,
+            ),
         )
         await db.commit()
         key_id = cursor.lastrowid
@@ -144,6 +165,15 @@ class KeyManager:
                 d["api_key_masked"] = mask_key(plain)
             except Exception:
                 d["api_key_masked"] = "****"
+            raw_model_cards = d.get("model_cards")
+            if raw_model_cards:
+                try:
+                    parsed_cards = json.loads(raw_model_cards)
+                    d["model_cards"] = parsed_cards if isinstance(parsed_cards, list) else []
+                except Exception:
+                    d["model_cards"] = []
+            else:
+                d["model_cards"] = []
             del d["api_key_encrypted"]
             results.append(d)
         return results
@@ -153,6 +183,14 @@ class KeyManager:
         cursor = await db.execute("DELETE FROM api_keys WHERE id = ?", (key_id,))
         await db.commit()
         return cursor.rowcount > 0
+
+    async def decrypt_key_by_id(self, key_id: int) -> str:
+        db = await get_db()
+        cursor = await db.execute("SELECT api_key_encrypted FROM api_keys WHERE id = ?", (key_id,))
+        row = await cursor.fetchone()
+        if not row:
+            raise ValueError(f"Key id={key_id} not found")
+        return decrypt_key(row["api_key_encrypted"])
 
     async def toggle_key(self, key_id: int, enabled: bool) -> bool:
         db = await get_db()
@@ -216,6 +254,73 @@ class KeyManager:
 
         raise RuntimeError(f"No enabled API keys available for provider '{provider}'")
 
+    async def get_available_key_for_model(
+        self,
+        model: str,
+        exclude_key_ids: Optional[Set[int]] = None,
+        supported_providers: Optional[Set[str]] = None,
+    ) -> Tuple[str, int, str, Optional[str], List[str]]:
+        """
+        Pick the best key across providers for a requested model.
+        Priority:
+        1) Any key with matching model card and NULL remaining tokens (never used)
+        2) Any key with matching model card and remaining tokens > threshold (highest remaining first)
+        3) Any key with matching model card and earliest reset time
+        """
+        db = await get_db()
+        cursor = await db.execute(
+            """
+            SELECT id, provider, api_key_encrypted, base_url, model_cards, rate_limit_remaining_tokens
+            FROM api_keys
+            WHERE is_enabled = 1
+            ORDER BY
+              CASE WHEN rate_limit_remaining_tokens IS NULL THEN 0 ELSE 1 END,
+              rate_limit_remaining_tokens DESC,
+              rate_limit_resets_at ASC
+            """
+        )
+        rows = await cursor.fetchall()
+        excluded = exclude_key_ids or set()
+        supported = {p.lower() for p in supported_providers} if supported_providers else None
+
+        normalized_model = (model or "").strip()
+        if not normalized_model:
+            raise RuntimeError("Model name is required")
+
+        explicit_matches = []
+        wildcard_matches = []
+        for row in rows:
+            if row["id"] in excluded:
+                continue
+            if supported and row["provider"] not in supported:
+                continue
+            cards = self._parse_model_cards(row["model_cards"])
+            if cards:
+                if normalized_model in cards:
+                    explicit_matches.append(row)
+            else:
+                wildcard_matches.append(row)
+
+        matching_rows = explicit_matches if explicit_matches else wildcard_matches
+
+        if not matching_rows:
+            raise RuntimeError(f"No enabled API keys support model '{normalized_model}'")
+
+        for row in matching_rows:
+            remaining = row["rate_limit_remaining_tokens"]
+            if remaining is None or remaining > self.MIN_TOKENS_THRESHOLD:
+                plain = decrypt_key(row["api_key_encrypted"])
+                return plain, row["id"], row["provider"], row["base_url"], self._parse_model_cards(row["model_cards"])
+
+        fallback = matching_rows[0]
+        plain = decrypt_key(fallback["api_key_encrypted"])
+        logger.warning(
+            "All matching keys below threshold for model %s — using key id=%s",
+            normalized_model,
+            fallback["id"],
+        )
+        return plain, fallback["id"], fallback["provider"], fallback["base_url"], self._parse_model_cards(fallback["model_cards"])
+
     # ---- rate-limit updates ----
 
     async def update_rate_limits(self, key_id: int, headers: dict):
@@ -275,6 +380,51 @@ class KeyManager:
         if row["cnt"] == 0:
             await self.add_key("groq", settings.GROQ_API_KEY, "env-default")
             logger.info("Seeded GROQ_API_KEY from environment into database.")
+
+    @staticmethod
+    def _normalize_base_url(base_url: Optional[str]) -> Optional[str]:
+        if base_url is None:
+            return None
+        candidate = base_url.strip()
+        if not candidate:
+            return None
+        parsed = urlparse(candidate)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            raise ValueError("base_url must be a valid http/https URL")
+        return candidate.rstrip("/")
+
+    @staticmethod
+    def _normalize_model_cards(model_cards: Optional[List[str]]) -> List[str]:
+        if not model_cards:
+            return []
+        cleaned: List[str] = []
+        seen = set()
+        for item in model_cards:
+            if not isinstance(item, str):
+                continue
+            model = item.strip()
+            if not model:
+                continue
+            if model in seen:
+                continue
+            seen.add(model)
+            cleaned.append(model)
+        return cleaned
+
+    @staticmethod
+    def _parse_model_cards(raw_model_cards: Any) -> List[str]:
+        if not raw_model_cards:
+            return []
+        if isinstance(raw_model_cards, list):
+            return [x for x in raw_model_cards if isinstance(x, str) and x.strip()]
+        if isinstance(raw_model_cards, str):
+            try:
+                parsed = json.loads(raw_model_cards)
+                if isinstance(parsed, list):
+                    return [x for x in parsed if isinstance(x, str) and x.strip()]
+            except Exception:
+                return []
+        return []
 
 
     # ---- background sweeper ----

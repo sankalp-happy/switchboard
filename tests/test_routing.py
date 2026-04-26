@@ -66,6 +66,12 @@ def _make_provider_result():
     )
 
 
+def _make_provider_result_for(provider_name: str):
+    result = _make_provider_result()
+    result.provider = provider_name
+    return result
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def setup():
     await init_db()
@@ -152,3 +158,36 @@ async def test_router_raises_when_all_keys_exhausted():
 
         with pytest.raises(Exception, match="All API keys exhausted"):
             await router.route_request(_make_request())
+
+
+@pytest.mark.asyncio
+async def test_router_uses_openai_compatible_provider_for_matching_model():
+    """Router should pick openai-compatible key when model card explicitly matches."""
+    await key_manager.add_key("groq", "gsk_fallback", "groq-fallback")
+    await key_manager.add_key(
+        "openai-compatible",
+        "sk_openai_compat",
+        "oc-main",
+        base_url="https://example.com/v1",
+        model_cards=["gpt-4o-mini"],
+    )
+
+    router = Router()
+    request = ChatCompletionRequest(
+        model="gpt-4o-mini",
+        messages=[ChatMessage(role="user", content="Hello")],
+    )
+    mock_result = _make_provider_result_for("openai-compatible")
+
+    with patch("routing.router.OpenAICompatibleProvider") as MockOCProvider:
+        instance = MockOCProvider.return_value
+        instance.generate = AsyncMock(return_value=mock_result)
+
+        result = await router.route_request(request)
+
+        MockOCProvider.assert_called_once_with(
+            api_key="sk_openai_compat",
+            base_url="https://example.com/v1",
+            provider_name="openai-compatible",
+        )
+        assert result.provider == "openai-compatible"

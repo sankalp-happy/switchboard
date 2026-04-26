@@ -644,6 +644,7 @@ body::after {
 
 .badge-groq    { background: rgba(255,107,53,0.15); color: #ff8a50; border: 1px solid rgba(255,107,53,0.25); }
 .badge-openai  { background: rgba(74,158,140,0.15); color: #6bc9b4; border: 1px solid rgba(74,158,140,0.25); }
+.badge-openai-compatible { background: rgba(74,158,140,0.15); color: #6bc9b4; border: 1px solid rgba(74,158,140,0.25); }
 .badge-anthropic { background: rgba(180,130,90,0.15); color: #d4a76a; border: 1px solid rgba(180,130,90,0.25); }
 .badge-local   { background: rgba(130,130,170,0.15); color: #a0a0cc; border: 1px solid rgba(130,130,170,0.25); }
 .badge-google  { background: rgba(66,133,244,0.15); color: #82b1f5; border: 1px solid rgba(66,133,244,0.25); }
@@ -700,6 +701,7 @@ body::after {
 
 .key-item.provider-groq    { border-left-color: #ff6b35; }
 .key-item.provider-openai  { border-left-color: #4a9e8c; }
+.key-item.provider-openai-compatible  { border-left-color: #4a9e8c; }
 .key-item.provider-anthropic { border-left-color: #b4825a; }
 .key-item.provider-local   { border-left-color: #8282aa; }
 .key-item.provider-google  { border-left-color: #4285f4; }
@@ -1120,6 +1122,7 @@ body::after {
             <label class="form-label" for="ak-provider">Provider</label>
             <select class="form-select" id="ak-provider">
               <option value="groq">Groq</option>
+              <option value="openai-compatible">OpenAI Compatible</option>
               <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic</option>
               <option value="google">Google</option>
@@ -1134,6 +1137,16 @@ body::after {
         <div class="form-group">
           <label class="form-label" for="ak-key">API Key</label>
           <input class="form-input" id="ak-key" type="password" placeholder="sk-…">
+        </div>
+        <div id="openai-compatible-extra" style="display:none; margin-top: var(--space-md);">
+          <div class="form-group">
+            <label class="form-label" for="ak-base-url">Base URL (OpenAI-compatible)</label>
+            <input class="form-input" id="ak-base-url" type="text" placeholder="https://your-endpoint/v1">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ak-model-cards">Model Cards (comma-separated)</label>
+            <input class="form-input" id="ak-model-cards" type="text" placeholder="gpt-4o-mini, llama-3.1-8b-instant">
+          </div>
         </div>
         <button class="btn btn-primary" id="btn-add-key">Add Key</button>
       </div>
@@ -1478,6 +1491,14 @@ async function sendQuery() {
 function initKeys() {
   $('#btn-add-key').addEventListener('click', addKey);
   $('#btn-refresh-keys').addEventListener('click', loadKeys);
+  $('#ak-provider').addEventListener('change', syncProviderSpecificFields);
+  syncProviderSpecificFields();
+}
+
+function syncProviderSpecificFields() {
+  const provider = $('#ak-provider').value;
+  const isOpenAICompatible = provider === 'openai-compatible';
+  $('#openai-compatible-extra').style.display = isOpenAICompatible ? 'block' : 'none';
 }
 
 async function loadKeys() {
@@ -1549,6 +1570,8 @@ function renderKeys() {
           <div class="key-detail-item"><div class="kd-label">Remaining Requests</div><div class="kd-value">${k.rate_limit_remaining_requests != null ? formatNum(k.rate_limit_remaining_requests) : '—'}</div></div>
           <div class="key-detail-item"><div class="kd-label">Token Reset</div><div class="kd-value">${k.rate_limit_reset_tokens || '—'}</div></div>
           <div class="key-detail-item"><div class="kd-label">Request Reset</div><div class="kd-value">${k.rate_limit_reset_requests || '—'}</div></div>
+          <div class="key-detail-item"><div class="kd-label">Base URL</div><div class="kd-value">${k.base_url || '—'}</div></div>
+          <div class="key-detail-item"><div class="kd-label">Model Cards</div><div class="kd-value">${Array.isArray(k.model_cards) && k.model_cards.length ? k.model_cards.join(', ') : '—'}</div></div>
         </div>
         <div class="key-timestamps">
           Last used: ${k.last_used_at || 'never'} &nbsp;·&nbsp; Created: ${k.created_at || '—'}
@@ -1600,20 +1623,41 @@ async function addKey() {
   const provider = $('#ak-provider').value;
   const label = $('#ak-label').value.trim();
   const apiKey = $('#ak-key').value.trim();
+  const baseUrl = $('#ak-base-url').value.trim();
+  const modelCardsRaw = $('#ak-model-cards').value.trim();
 
   if (!apiKey) { toast('API key cannot be empty', 'error'); return; }
+
+  let base_url = null;
+  let model_cards = null;
+  if (provider === 'openai-compatible') {
+    if (!baseUrl) { toast('Base URL is required for OpenAI-compatible keys', 'error'); return; }
+    const cards = modelCardsRaw
+      .split(',')
+      .map(c => c.trim())
+      .filter(Boolean);
+    if (!cards.length) { toast('At least one model card is required', 'error'); return; }
+    base_url = baseUrl;
+    model_cards = cards;
+  }
 
   const btn = $('#btn-add-key');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Adding…';
 
   try {
-    const res = await api('POST', '/admin/keys', { provider, api_key: apiKey, label });
+    const payload = { provider, api_key: apiKey, label };
+    if (base_url) payload.base_url = base_url;
+    if (model_cards) payload.model_cards = model_cards;
+
+    const res = await api('POST', '/admin/keys', payload);
     if (res.ok) {
       const data = await res.json();
       toast(`Key added (ID: ${data.id})`);
       $('#ak-label').value = '';
       $('#ak-key').value = '';
+      $('#ak-base-url').value = '';
+      $('#ak-model-cards').value = '';
       loadKeys();
     } else {
       const errText = await res.text();
