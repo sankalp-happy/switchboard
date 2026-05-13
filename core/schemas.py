@@ -10,6 +10,7 @@ class ChatCompletionRequest(BaseModel):
     messages: List[ChatMessage]
     temperature: Optional[float] = 0.7
     stream: Optional[bool] = False
+    provider: Optional[str] = None
 
 class Usage(BaseModel):
     prompt_tokens: int = 0

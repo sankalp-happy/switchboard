@@ -11,6 +11,7 @@ SwitchBoard sits between your client applications and upstream LLM providers, of
 - **OpenAI-Compatible API** — Drop-in `/v1/chat/completions` endpoint that works with any OpenAI client library.
 - **Semantic Caching** — Embedding-based similarity cache (powered by Google Gemini embeddings + Redis) that returns cached responses for semantically similar prompts, saving tokens and latency.
 - **Automatic Key Rotation** — Register multiple API keys per provider; the router picks the key with the most remaining quota and automatically fails over on 429 rate limits or auth errors.
+- **Per-Request Provider Selection** — Optionally set `provider` in the request body to target a specific vendor.
 - **Encrypted Key Storage** — API keys are encrypted at rest with Fernet (AES-128-CBC) and stored in SQLite.
 - **Rate-Limit Awareness** — Parses provider rate-limit headers in real time, tracks per-key quotas, and runs a background sweeper to reset expired windows.
 - **Admin API & Dashboard** — Full CRUD for API keys, provider health summaries, and stats via REST endpoints + a retro-industrial web dashboard (static HTML/CSS/JS served by nginx).
@@ -25,7 +26,7 @@ SwitchBoard sits between your client applications and upstream LLM providers, of
 | API Framework       | FastAPI + Uvicorn                           |
 | Cache               | Redis 7 (async via `redis-py`)              |
 | Embeddings          | Google Gemini (`gemini-embedding-001`)      |
-| LLM Provider        | Groq (OpenAI-compatible)                    |
+| LLM Provider        | Groq, Google, Anthropic                      |
 | Key Storage         | SQLite + Fernet encryption (`cryptography`) |
 | Schemas / Validation| Pydantic v2                                 |
 | Admin UI            | Static HTML/CSS/JS + nginx (reverse proxy)  |
@@ -81,6 +82,7 @@ SwitchBoard sits between your client applications and upstream LLM providers, of
 - **Redis** (included via Docker Compose, or run standalone)
 - A **Groq** API key (get one at [console.groq.com](https://console.groq.com))
 - A **Google AI** API key for embeddings (get one at [aistudio.google.com](https://aistudio.google.com))
+- Optional: **Google** and **Anthropic** API keys for provider routing
 
 ---
 
@@ -112,6 +114,7 @@ Populate it with:
 ```env
 GROQ_API_KEY=gsk_...
 GOOGLE_API_KEY=AIza...
+ANTHROPIC_API_KEY=sk-ant-...
 ENCRYPTION_KEY=<key-from-step-2>
 ```
 
@@ -166,6 +169,7 @@ redis-server
 ```bash
 export GROQ_API_KEY="gsk_..."
 export GOOGLE_API_KEY="AIza..."
+export ANTHROPIC_API_KEY="sk-ant-..."
 export ENCRYPTION_KEY="$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
 export REDIS_URL="redis://localhost:6379/0"
 ```
@@ -193,7 +197,8 @@ curl -X POST http://localhost:8000/v1/chat/completions \
       {"role": "system", "content": "You are a helpful assistant."},
       {"role": "user", "content": "What is the capital of France?"}
     ],
-    "temperature": 0.7
+    "temperature": 0.7,
+    "provider": "groq"
   }'
 ```
 
@@ -278,6 +283,7 @@ pytest
 
 # Run a specific test file
 pytest tests/test_routing.py
+pytest tests/test_provider_routing.py
 
 # Run with verbose output
 pytest -v
@@ -291,6 +297,7 @@ Test modules:
 | `tests/test_key_manager.py` | Key encryption, rotation, rate limits|
 | `tests/test_routing.py`     | Router failover and key selection    |
 | `tests/test_semantic_cache.py` | Embedding-based cache logic       |
+| `tests/test_provider_routing.py` | Provider selection via request  |
 | `tests/test_token_exhaustion.py` | Rate-limit exhaustion scenarios |
 
 ---
@@ -340,6 +347,8 @@ switchboard/
 | `ENCRYPTION_KEY`  | Yes      | —                          | Fernet key for encrypting API keys at rest        |
 | `GROQ_API_KEY`    | No       | `""`                       | Default Groq key (can also add via Admin API)     |
 | `GOOGLE_API_KEY`  | No       | `""`                       | Google AI key for embedding generation            |
+| `ANTHROPIC_API_KEY` | No     | `""`                       | Anthropic API key for provider routing            |
+| `SWITCHBOARD_PROVIDER` | No  | `"groq"`                  | Default provider when request omits `provider`    |
 | `REDIS_URL`       | No       | `redis://localhost:6379/0` | Redis connection URL                              |
 | `SQLITE_DB_PATH`  | No       | `data/switchboard.db`      | Path to the SQLite database file                  |
 | `PORT`            | No       | `8000`                     | Gateway listen port                               |

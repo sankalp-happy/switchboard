@@ -14,6 +14,7 @@ from cryptography.fernet import Fernet
 os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 os.environ["GROQ_API_KEY"] = ""
 os.environ["GOOGLE_API_KEY"] = ""
+os.environ["ANTHROPIC_API_KEY"] = ""
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 
 import pytest
@@ -75,7 +76,6 @@ async def setup():
     db = await get_db()
     await db.execute("DELETE FROM api_keys")
     await db.commit()
-    await db.close()
     yield
 
 
@@ -84,10 +84,10 @@ async def test_router_picks_key_and_calls_provider():
     """Router should get a key from KeyManager and call the provider."""
     await key_manager.add_key("groq", "gsk_test_key_1", "test1")
 
-    router = Router()
     mock_result = _make_provider_result()
 
     with patch("routing.router.GroqProvider") as MockProvider:
+        router = Router()
         instance = MockProvider.return_value
         instance.generate = AsyncMock(return_value=mock_result)
 
@@ -103,7 +103,6 @@ async def test_router_switches_key_on_429():
     await key_manager.add_key("groq", "gsk_key_a", "a")
     await key_manager.add_key("groq", "gsk_key_b", "b")
 
-    router = Router()
     mock_result = _make_provider_result()
 
     # First call raises 429, second succeeds
@@ -124,6 +123,7 @@ async def test_router_switches_key_on_429():
         return mock_result
 
     with patch("routing.router.GroqProvider") as MockProvider:
+        router = Router()
         instance = MockProvider.return_value
         instance.generate = AsyncMock(side_effect=side_effect)
 
@@ -137,8 +137,6 @@ async def test_router_raises_when_all_keys_exhausted():
     """Router should raise when every key returns 429."""
     await key_manager.add_key("groq", "gsk_only_key", "only")
 
-    router = Router()
-
     mock_response_429 = MagicMock()
     mock_response_429.status_code = 429
     mock_response_429.request = MagicMock()
@@ -147,6 +145,7 @@ async def test_router_raises_when_all_keys_exhausted():
     )
 
     with patch("routing.router.GroqProvider") as MockProvider:
+        router = Router()
         instance = MockProvider.return_value
         instance.generate = AsyncMock(side_effect=error_429)
 

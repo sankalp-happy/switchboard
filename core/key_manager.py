@@ -123,6 +123,8 @@ class KeyManager:
         )
         await db.commit()
         key_id = cursor.lastrowid
+        if key_id is None:
+            raise RuntimeError("Failed to insert API key: no row id returned")
         logger.info(f"Added key id={key_id} provider={provider} label={label}")
         return key_id
 
@@ -216,6 +218,31 @@ class KeyManager:
 
         raise RuntimeError(f"No enabled API keys available for provider '{provider}'")
 
+    async def get_all_keys(self, provider: str) -> List[Tuple[str, int]]:
+        """
+        Return all enabled keys for a provider, regardless of exhaustion state.
+        Returns list of (decrypted_api_key, key_id).
+        """
+        db = await get_db()
+        cursor = await db.execute(
+            """
+            SELECT id, api_key_encrypted
+            FROM api_keys
+            WHERE provider = ? AND is_enabled = 1
+            ORDER BY id
+            """,
+            (provider.lower(),),
+        )
+        rows = await cursor.fetchall()
+        if not rows:
+            raise RuntimeError(f"No enabled API keys available for provider '{provider}'")
+
+        results: List[Tuple[str, int]] = []
+        for row in rows:
+            plain = decrypt_key(row["api_key_encrypted"])
+            results.append((plain, row["id"]))
+        return results
+
     # ---- rate-limit updates ----
 
     async def update_rate_limits(self, key_id: int, headers: dict):
@@ -272,7 +299,7 @@ class KeyManager:
             "SELECT COUNT(*) as cnt FROM api_keys WHERE provider = 'groq'"
         )
         row = await cursor.fetchone()
-        if row["cnt"] == 0:
+        if row is not None and row["cnt"] == 0:
             await self.add_key("groq", settings.GROQ_API_KEY, "env-default")
             logger.info("Seeded GROQ_API_KEY from environment into database.")
 
