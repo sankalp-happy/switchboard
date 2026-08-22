@@ -27,7 +27,7 @@ pydantic-settings==2.15.0
 # --- Embeddings (semantic cache; optional at runtime) ------------------------
 # Without GOOGLE_API_KEY the cache disables itself and requests are still
 # served, but the package is imported at module load so it is not optional here.
-google-genai==1.64.0
+google-genai==2.18.1
 # CEILING: numpy 2.5.0 raised its floor to Python >=3.12. The CI matrix tests
 # 3.11 and the Dockerfile ships 3.11-slim, so 2.4.x is the last usable line.
 # Dependabot will keep proposing 2.5.x; it cannot install here. Lift this only
