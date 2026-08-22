@@ -25,7 +25,7 @@ jobs:
         python-version: ["3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
@@ -58,7 +58,7 @@ jobs:
     name: docs consistency
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # README.md is canonical. site/docs.html duplicates several of its sections,
       # and they have drifted before: the README shipped a literal "<your-org>"
@@ -122,7 +122,7 @@ jobs:
     name: docker image builds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Dockerfile does `COPY . .` and installs from requirements.txt. Nothing
       # verified the image still built after a dependency change until now.
