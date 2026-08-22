@@ -7,8 +7,8 @@
 # .github/dependabot.yml) proposes the upgrades.
 
 # --- Web framework -----------------------------------------------------------
-fastapi==0.110.0
-uvicorn==0.29.0
+fastapi==0.141.1
+uvicorn==0.52.4
 
 # --- HTTP client -------------------------------------------------------------
 # Every provider adapter talks to its upstream over httpx directly. There is no
@@ -28,7 +28,7 @@ pydantic-settings==2.15.0
 # Without GOOGLE_API_KEY the cache disables itself and requests are still
 # served, but the package is imported at module load so it is not optional here.
 google-genai==1.64.0
-numpy==2.4.2
+numpy==2.5.2
 
 # --- Storage / crypto --------------------------------------------------------
 aiosqlite==0.22.1
