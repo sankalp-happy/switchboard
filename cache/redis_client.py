@@ -1,5 +1,6 @@
 import json
 import hashlib
+import logging
 from typing import Optional, Dict, Any, Tuple
 from core.schemas import ChatCompletionRequest, ChatCompletionResponse
 from core.config import settings
@@ -8,6 +9,8 @@ import numpy as np
 
 # Since we use async, typical redis library needs to be aware or we use aioredis (now part of redis-py 4.2+)
 import redis.asyncio as redis
+
+logger = logging.getLogger("switchboard.cache")
 
 class RedisCache:
     def __init__(self):
@@ -23,7 +26,7 @@ class RedisCache:
             self.genai_client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         else:
             self.genai_client = None
-            print("GOOGLE_API_KEY is not set; semantic cache disabled (requests still served).")
+            logger.warning("GOOGLE_API_KEY is not set; semantic cache disabled (requests still served).")
         self.embedding_model = "gemini-embedding-001"
 # Increased threshold to 0.9 to avoid false positive matches between distinct semantic statements
         self.similarity_threshold = 0.9
@@ -41,7 +44,7 @@ class RedisCache:
             # embeddings[0].values contains the list of floats
             return np.array(result.embeddings[0].values)
         except Exception as e:
-            print(f"Error generating embedding: {e}")
+            logger.error("Error generating embedding: %s", e)
             return None
 
     def _generate_key(self, request: ChatCompletionRequest) -> str:
@@ -93,19 +96,19 @@ class RedisCache:
                         highest_similarity = float(similarity)
                         best_match = data_dict
             except Exception as e:
-                print(f"Error reading cache for key {key}: {e}")
+                logger.warning("Error reading cache for key %s: %s", key, e)
                 continue
                 
         # 3. If the highest similarity exceeds the threshold, return the cached result
         if best_match and highest_similarity >= self.similarity_threshold:
-            print(f"Cache hit! Semantic similarity: {highest_similarity:.4f}")
+            logger.debug("Cache hit! Semantic similarity: %.4f", highest_similarity)
             # The cached item is a specialized format containing "response", "embedding", and "model"
             try:
                 # We expect the payload stored inside the "response" key to map to ChatCompletionResponse
                 if "response" in best_match:
                      return ChatCompletionResponse(**best_match["response"]), highest_similarity
             except Exception as e:
-                 print(f"Failed to parse cached response: {e}")
+                 logger.warning("Failed to parse cached response: %s", e)
                  
         return None, highest_similarity
 
@@ -116,7 +119,7 @@ class RedisCache:
         request_embedding = self._get_embedding(messages_text)
         
         if request_embedding is None:
-             print("Failed to generate embedding; bypassing cache storage.")
+             logger.warning("Failed to generate embedding; bypassing cache storage.")
              return
              
         key = self._generate_key(request)
