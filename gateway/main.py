@@ -280,7 +280,7 @@ async def chat_completions(request: ChatCompletionRequest, response: Response):
         response.headers["X-Cache"] = "MISS"
         response.headers["X-Provider"] = provider_result.provider
         response.headers["X-Latency-Ms"] = f"{provider_result.latency_ms:.1f}"
-        if highest_similarity >= -1.0:
+        if highest_similarity > -1.0:
             response.headers["X-Semantic-Similarity"] = f"{highest_similarity:.4f}"
         return provider_result.response
     except Exception as e:
