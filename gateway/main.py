@@ -118,7 +118,7 @@ async def _usage_bucket_cleanup():
 app = FastAPI(
     title="SwitchBoard Gateway",
     description="Multi-provider LLM gateway with key rotation & semantic caching",
-    version="0.2.0",
+    version=VERSION,
     lifespan=lifespan,
     # The auto-mounted docs handed the complete API schema to anyone who asked,
     # including the exact request body for adding a provider key. Disabled here
