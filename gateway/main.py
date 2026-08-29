@@ -245,6 +245,17 @@ cache = RedisCache()
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse,
           dependencies=[Depends(require_client)])
 async def chat_completions(request: ChatCompletionRequest, response: Response):
+    if request.stream:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "message": "Streaming is not supported in this version of SwitchBoard.",
+                    "type": "unsupported_parameter",
+                    "param": "stream",
+                }
+            },
+        )
     # require_client has already run: the caller holds a CLIENT_TOKENS entry
     # (or an ADMIN_TOKENS one, which is a superset). Unauthenticated callers
     # never reach this body, so provider quota can no longer be spent by

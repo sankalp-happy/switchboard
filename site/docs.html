@@ -384,7 +384,7 @@ GROQ_API_KEY=gsk_... <span class="t-cmd">./setup.sh</span> --yes</code></pre>
             <tr><td><code>messages</code></td><td>array</td><td>—</td><td>Required. Each item is <code>{role, content}</code>.</td></tr>
             <tr><td><code>temperature</code></td><td>float</td><td><code>0.7</code></td><td>Also part of the cache key.</td></tr>
             <tr><td><code>provider</code></td><td>string</td><td><code>SWITCHBOARD_PROVIDER</code></td><td><code>groq</code>, <code>google</code> or <code>anthropic</code>.</td></tr>
-            <tr><td><code>stream</code></td><td>bool</td><td><code>false</code></td><td>Accepted by the schema but <b>not implemented</b> — see <a href="#limits">Limitations</a>.</td></tr>
+            <tr><td><code>stream</code></td><td>bool</td><td><code>false</code></td><td><code>true</code> is rejected with HTTP 400 — see <a href="#limits">Limitations</a>.</td></tr>
           </tbody>
         </table>
       </div>
@@ -892,11 +892,12 @@ response = client.chat.completions.<span class="t-fn">create</span>(
       <h3 id="limit-streaming">Streaming is not implemented</h3>
       <p>
         <span class="inline">ChatCompletionRequest</span> accepts a
-        <span class="inline">stream</span> field, but both the Groq and Google adapters overwrite it
-        with <span class="inline">False</span> before sending
-        (<em>"For MVP, disable streaming as it requires SSE handling"</em>), and the Anthropic adapter
-        never forwards it. Every response is returned whole. Setting
-        <span class="inline">stream: true</span> will not error — it simply has no effect.
+        <span class="inline">stream</span> field, but sending
+        <span class="inline">stream: true</span> returns an HTTP 400 error with an
+        OpenAI-compatible error payload
+        (<span class="inline">{"error": {"message": "...", "type": "unsupported_parameter", "param": "stream"}}</span>).
+        <span class="inline">stream: false</span> and omitting <span class="inline">stream</span>
+        both work as normal (non-streamed). Streaming itself (SSE) is not implemented.
       </p>
 
       <h3 id="limit-cache">Cache lookup is a linear scan</h3>

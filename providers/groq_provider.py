@@ -19,9 +19,6 @@ class GroqProvider(LLMProvider):
         async with httpx.AsyncClient() as client:
             payload = request.model_dump(exclude_unset=True, exclude={"provider"})
             
-            # For MVP, disable streaming as it requires SSE handling
-            payload['stream'] = False
-            
             start = time.time()
             response = await client.post(
                 self.base_url,

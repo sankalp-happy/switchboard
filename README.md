@@ -519,11 +519,10 @@ Things SwitchBoard does not currently do. These are known and tracked in
 - **The semantic cache lookup scans the full Redis keyspace** on every request
   (`KEYS` plus one `GET` per entry, then cosine similarity in Python). This is an MVP
   implementation and its cost grows with the cache size.
-- **No streaming, and `"stream": true` fails quietly.** The request schema accepts the
-  field (`core/schemas.py:12`) but the provider adapters force it back to `false`
-  (`providers/groq_provider.py:23`, `providers/google_provider.py:29`). A client that
-  asks for a stream gets a normal complete response instead of an error, which is the
-  worse of the two failure modes. Do not rely on streaming.
+- **`stream: true` is now rejected with HTTP 400.** The gateway validates the request
+  body and returns an OpenAI-compatible error (`{"error": {"message": "...", "type": "unsupported_parameter", "param": "stream"}}`)
+  rather than silently ignoring the parameter. `stream: false` and omitting `stream`
+  both work as normal (non-streamed). Do not rely on streaming.
 - **OpenAI compatibility is partial.** Ordinary chat completions work with an OpenAI
   client. Tool and function calling, streaming, and less common parameters are not
   implemented or not verified against the OpenAI contract. Treat "drop-in" as covering

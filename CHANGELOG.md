@@ -7,6 +7,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`stream: true` is now rejected with HTTP 400** instead of being silently ignored.
+  The gateway returns an OpenAI-compatible error (`{"error": {"message": "...", "type": "unsupported_parameter", "param": "stream"}}`)
+  when a client sends `stream: true`. The `payload["stream"] = False` lines in
+  `providers/groq_provider.py` and `providers/google_provider.py` have been removed
+  since the gateway now catches this before reaching the providers.
+
+### Added
+
 ## [0.2.0] — 2026-08-22
 
 First release with a license. SwitchBoard's repository was already public but carried no
@@ -84,8 +94,8 @@ The version number is 0.2.0 rather than 0.1.0 because `/health` has been reporti
 
 ### Security
 
-- Documented that `"stream": true` is silently downgraded to a non-streamed response
-  rather than rejected, so nobody builds on an assumption that does not hold.
+- **`stream: true` now returns HTTP 400** with an OpenAI-compatible error payload
+  instead of being silently downgraded to a non-streamed response.
 
 ## [0.1.0]
 

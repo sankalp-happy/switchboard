@@ -94,19 +94,18 @@ Good first contribution: well-scoped, no credentials needed, obvious success cri
 **Why:** "OpenAI-Compatible API" is the first bullet in the README and the strongest
 adoption claim the project makes, and nothing verifies it. Nothing covers streaming,
 tool or function calls, error-payload shape, the full `usage` object, or what happens
-when a client sends a parameter the gateway does not model. One concrete gap is already
-known: `core/schemas.py:12` accepts `stream`, but `providers/groq_provider.py:23` and
-`providers/google_provider.py:29` force it to `False`, so a client requesting a stream
-gets a complete response and no error — a silent contract violation.
+when a client sends a parameter the gateway does not model. One concrete gap was
+already known: `core/schemas.py:12` accepted `stream`, but the provider adapters forced
+it to `False`, so a client requesting a stream got a complete response and no error —
+a silent contract violation. (Fixed in v0.2.1+: `stream: true` now returns HTTP 400.)
 
 **Context:** The README's Limitations section now scopes the claim honestly, so this is
 not urgent, but the gap between "works with the OpenAI SDK" and "implements the OpenAI
-API" is where adopter trust is lost. Two increments: first make unsupported parameters
-fail loudly instead of silently (small, and strictly better than today), then decide
-whether streaming is worth implementing — it needs SSE handling in every adapter plus a
-pass-through path that skips the cache.
+API" is where adopter trust is lost. Next increment: decide whether streaming is worth
+implementing — it needs SSE handling in every adapter plus a pass-through path that
+skips the cache.
 
-**Effort:** S (fail loudly) / L (implement streaming)
+**Effort:** S (done) / L (implement streaming)
 **Priority:** P2
 **Depends on:** None
 

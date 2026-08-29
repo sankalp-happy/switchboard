@@ -26,7 +26,6 @@ class GoogleProvider(LLMProvider):
     async def generate(self, request: ChatCompletionRequest) -> ProviderResult:
         async with httpx.AsyncClient() as client:
             payload = request.model_dump(exclude_unset=True, exclude={"provider"})
-            payload["stream"] = False
 
             start = time.time()
             response = await client.post(
