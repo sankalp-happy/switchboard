@@ -7,7 +7,7 @@
 
   Duplication means drift, and it has already happened once: the README shipped a literal
   "<your-org>" placeholder in its clone command while this page had the real URL. So the
-  agreement is enforced rather than requested — .github/workflows/ci.yml fails the build
+  agreement is enforced rather than requested: .github/workflows/ci.yml fails the build
   if the clone URL or the version disagrees between the two files.
 
   If you change setup steps, ports, endpoints, or the version here, make the matching
@@ -17,7 +17,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Documentation — SwitchBoard</title>
+<title>SwitchBoard documentation</title>
 <meta name="description" content="Install, configure and operate SwitchBoard: quickstart, environment variables, semantic cache tuning, key rotation, the admin API, and Prometheus + Grafana observability.">
 <meta name="color-scheme" content="light dark">
 <!-- Applied before first paint so a stored preference never flashes the
@@ -72,7 +72,7 @@
     <h1>Documentation</h1>
     <p class="lede">
       Everything below is taken from the repository as it stands at
-      <span class="inline">v0.2.0</span> — commands from <span class="inline">setup.sh</span>,
+      <span class="inline">v0.2.0</span>: commands from <span class="inline">setup.sh</span>,
       variables from <span class="inline">.env.example</span>, metrics from
       <span class="inline">core/metrics.py</span>. Where a value is hardcoded rather than
       configurable, the file to edit is named.
@@ -121,10 +121,10 @@
       <p>
         Supported providers are <span class="inline">groq</span>,
         <span class="inline">google</span> and <span class="inline">anthropic</span>. There is no
-        hosted version — you run the whole stack yourself from one Compose file.
+        hosted version. You run the whole stack yourself from one Compose file.
       </p>
       <div class="note">
-        <b>Version note —</b> the gateway reports <span class="inline">0.2.0</span> from
+        <b>Version note:</b> the gateway reports <span class="inline">0.2.0</span> from
         <span class="inline">/health</span>. This documentation describes that build.
       </div>
     </section>
@@ -135,8 +135,8 @@
     <section id="prerequisites">
       <h2>Prerequisites</h2>
       <ul>
-        <li><b>Docker</b> and <b>Docker Compose v2</b> — the only requirement for the quickstart below.</li>
-        <li><b>Python 3.11+</b> — only if you intend to run the gateway outside Docker.</li>
+        <li><b>Docker</b> and <b>Docker Compose v2</b>, the only requirement for the quickstart below.</li>
+        <li><b>Python 3.11+</b>, only if you intend to run the gateway outside Docker.</li>
       </ul>
 
       <h3>Provider keys</h3>
@@ -155,7 +155,7 @@
         </table>
       </div>
       <div class="note">
-        <b>Without <code>GOOGLE_API_KEY</code></b> the gateway still starts and serves requests — it
+        <b>Without <code>GOOGLE_API_KEY</code></b> the gateway still starts and serves requests. It
         simply runs with the semantic cache disabled and every response reports
         <span class="inline">X-Cache: MISS</span>. The embedding client is the only thing that needs it.
       </div>
@@ -216,7 +216,7 @@ GROQ_API_KEY=gsk_... <span class="t-cmd">./setup.sh</span> --yes</code></pre>
       <h3 id="ports">Port conflicts</h3>
       <p>
         If a port the stack needs is already taken, setup <b>remaps</b> the service rather than
-        fighting for the port. It never kills another process — including Docker itself, which owns
+        fighting for the port. It never kills another process, including Docker itself, which owns
         every published port on macOS.
       </p>
       <div class="code">
@@ -229,7 +229,7 @@ GROQ_API_KEY=gsk_... <span class="t-cmd">./setup.sh</span> --yes</code></pre>
         <span class="inline">GATEWAY_PORT</span>, <span class="inline">ADMIN_UI_PORT</span>,
         <span class="inline">REDIS_PORT</span>, <span class="inline">PROMETHEUS_PORT</span> and
         <span class="inline">GRAFANA_PORT</span>, and the summary prints the real URLs. They persist
-        across runs, so your URLs stay stable — edit <span class="inline">.env</span> to move a
+        across runs, so your URLs stay stable. Edit <span class="inline">.env</span> to move a
         service back.
       </p>
       <p>
@@ -293,7 +293,7 @@ GROQ_API_KEY=gsk_... <span class="t-cmd">./setup.sh</span> --yes</code></pre>
       <div class="note note--warn">
         <b><code>ENCRYPTION_KEY</code> is mandatory.</b> It has no default, and
         <span class="inline">core/key_manager.py</span> raises at first use without it. Losing it
-        makes every stored key undecryptable — back it up alongside the database volume.
+        makes every stored key undecryptable. Back it up alongside the database volume.
       </div>
     </section>
 
@@ -358,7 +358,7 @@ GROQ_API_KEY=gsk_... <span class="t-cmd">./setup.sh</span> --yes</code></pre>
       <h3 id="usage-curl">Chat completions</h3>
       <p>
         The endpoint mirrors the OpenAI request shape. <span class="inline">provider</span> is the
-        one addition — a SwitchBoard extension that pins this single call to a vendor.
+        one addition, a SwitchBoard extension that pins this single call to a vendor.
       </p>
       <div class="code">
         <div class="code__bar"><span class="code__lang">bash</span><button class="code__copy" type="button">Copy</button></div>
@@ -380,11 +380,11 @@ GROQ_API_KEY=gsk_... <span class="t-cmd">./setup.sh</span> --yes</code></pre>
         <table>
           <thead><tr><th scope="col">Field</th><th scope="col">Type</th><th scope="col">Default</th><th scope="col">Notes</th></tr></thead>
           <tbody>
-            <tr><td><code>model</code></td><td>string</td><td>—</td><td>Required. Passed through to the provider verbatim.</td></tr>
-            <tr><td><code>messages</code></td><td>array</td><td>—</td><td>Required. Each item is <code>{role, content}</code>.</td></tr>
+            <tr><td><code>model</code></td><td>string</td><td>none</td><td>Required. Passed through to the provider verbatim.</td></tr>
+            <tr><td><code>messages</code></td><td>array</td><td>none</td><td>Required. Each item is <code>{role, content}</code>.</td></tr>
             <tr><td><code>temperature</code></td><td>float</td><td><code>0.7</code></td><td>Also part of the cache key.</td></tr>
             <tr><td><code>provider</code></td><td>string</td><td><code>SWITCHBOARD_PROVIDER</code></td><td><code>groq</code>, <code>google</code> or <code>anthropic</code>.</td></tr>
-            <tr><td><code>stream</code></td><td>bool</td><td><code>false</code></td><td><code>true</code> is rejected with HTTP 400 — see <a href="#limits">Limitations</a>.</td></tr>
+            <tr><td><code>stream</code></td><td>bool</td><td><code>false</code></td><td><code>true</code> is rejected with HTTP 400. See <a href="#limits">Limitations</a>.</td></tr>
           </tbody>
         </table>
       </div>
@@ -406,7 +406,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
 <span class="t-fn">print</span>(response.choices[<span class="t-num">0</span>].message.content)</code></pre>
       </div>
       <p>
-        The <span class="inline">api_key</span> value is ignored — the gateway does not authenticate
+        The <span class="inline">api_key</span> value is ignored. The gateway does not authenticate
         callers. See <a href="#security">Auth &amp; exposure</a>.
       </p>
 
@@ -424,7 +424,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
         </table>
       </div>
       <div class="note">
-        <b>CORS note —</b> only <span class="inline">X-Cache</span> and
+        <b>CORS note:</b> only <span class="inline">X-Cache</span> and
         <span class="inline">X-Semantic-Similarity</span> are listed in
         <span class="inline">expose_headers</span> on the CORS middleware. Browser JavaScript on a
         cross-origin page can read those two; <span class="inline">X-Provider</span> and
@@ -465,7 +465,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
         <table>
           <thead><tr><th scope="col">Variable</th><th scope="col">Required</th><th scope="col">Default</th><th scope="col">Description</th></tr></thead>
           <tbody>
-            <tr><td><code>ENCRYPTION_KEY</code></td><td>Yes</td><td>—</td><td>Fernet key used to encrypt provider keys at rest.</td></tr>
+            <tr><td><code>ENCRYPTION_KEY</code></td><td>Yes</td><td>none</td><td>Fernet key used to encrypt provider keys at rest.</td></tr>
             <tr><td><code>GROQ_API_KEY</code></td><td>No</td><td><code>""</code></td><td>Seeded into the database on first start if no Groq key exists yet.</td></tr>
             <tr><td><code>GOOGLE_API_KEY</code></td><td>No</td><td><code>""</code></td><td>Powers the semantic cache's embeddings. Absent ⇒ cache disabled.</td></tr>
             <tr><td><code>ANTHROPIC_API_KEY</code></td><td>No</td><td><code>""</code></td><td>Enables the <code>anthropic</code> provider.</td></tr>
@@ -480,7 +480,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
       <div class="note">
         <b>Seeding is one-shot.</b> <span class="inline">GROQ_API_KEY</span> is inserted into the
         database only when no Groq key is present. Once a key exists, changing the variable has no
-        effect — manage keys through the <a href="#admin">admin API</a> from then on.
+        effect. Manage keys through the <a href="#admin">admin API</a> from then on.
       </div>
 
       <h3 id="hostports">Host port mappings</h3>
@@ -515,14 +515,14 @@ response = client.chat.completions.<span class="t-fn">create</span>(
             <tr><td><code>self.ttl</code></td><td><code>3600</code></td><td>Entry lifetime in seconds, applied with <code>SETEX</code>.</td></tr>
             <tr><td><code>self.similarity_threshold</code></td><td><code>0.9</code></td><td>Minimum cosine similarity for a hit. Raised from a lower value to stop distinct prompts matching.</td></tr>
             <tr><td><code>self.embedding_model</code></td><td><code>gemini-embedding-001</code></td><td>Model used to embed the joined message text.</td></tr>
-            <tr><td>Key prefix</td><td><code>nexus:cache:*</code></td><td>Redis namespace. Note the legacy prefix — it is not <code>switchboard:</code>.</td></tr>
+            <tr><td>Key prefix</td><td><code>nexus:cache:*</code></td><td>Redis namespace. This is a legacy prefix; it is not <code>switchboard:</code>.</td></tr>
           </tbody>
         </table>
       </div>
       <p>
         The stored key is a SHA-256 of <span class="inline">model + temperature + messages</span>,
         so identical prompts at different temperatures occupy different entries. Retrieval, however,
-        scans <em>all</em> keys under the prefix and compares embeddings in Python — see
+        scans <em>all</em> keys under the prefix and compares embeddings in Python. See
         <a href="#limits">Limitations</a> before pointing production traffic at it.
       </p>
       <h4>Turning the cache off</h4>
@@ -554,7 +554,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
         provider like this:
       </p>
       <ol class="plain">
-        <li>Keys never used before — <span class="inline">rate_limit_remaining_tokens IS NULL</span> — are treated as unlimited and preferred.</li>
+        <li>Keys never used before, where <span class="inline">rate_limit_remaining_tokens IS NULL</span>, are treated as unlimited and preferred.</li>
         <li>Then keys with remaining tokens above <span class="inline">MIN_TOKENS_THRESHOLD</span> (<b>100</b>), highest remaining first.</li>
         <li>If every key is below the threshold, the one with the soonest reset is used anyway, with a warning logged.</li>
       </ol>
@@ -567,7 +567,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
             <tr><td><code>429</code></td><td>Key marked exhausted (reset defaults to 60s ahead), <code>switchboard_key_switches_total</code> increments, next key tried.</td></tr>
             <tr><td><code>401</code></td><td>Key <b>disabled permanently</b> in the database, next key tried.</td></tr>
             <tr><td><code>5xx</code></td><td>Next key tried; the key is left enabled.</td></tr>
-            <tr><td>Other <code>4xx</code></td><td>Not retried — raised straight to the caller.</td></tr>
+            <tr><td>Other <code>4xx</code></td><td>Not retried. Raised straight to the caller.</td></tr>
             <tr><td>All keys tried</td><td>The gateway returns <code>502 Bad Gateway</code> with the last error attached.</td></tr>
           </tbody>
         </table>
@@ -594,18 +594,18 @@ response = client.chat.completions.<span class="t-fn">create</span>(
         and every <span class="inline">/admin/*</span> endpoint are open to anyone who can reach the
         port, and CORS is configured with
         <span class="inline">allow_origins=["*"]</span>. Treat SwitchBoard as a service for a trusted
-        network only — bind it to localhost, or put an authenticating reverse proxy in front of it
+        network only: bind it to localhost, or put an authenticating reverse proxy in front of it
         before it is reachable from anywhere else.
       </div>
       <p>What the gateway <em>does</em> protect:</p>
       <ul>
         <li><b>Keys at rest.</b> Provider credentials are Fernet-encrypted (AES-128-CBC with HMAC) before insertion into SQLite and decrypted only at the moment a request is sent.</li>
-        <li><b>Keys in responses.</b> <span class="inline">/admin/keys</span> and <span class="inline">/admin/stats</span> return masked values — first four and last four characters only.</li>
+        <li><b>Keys in responses.</b> <span class="inline">/admin/keys</span> and <span class="inline">/admin/stats</span> return masked values: first four and last four characters only.</li>
         <li><b>Prompt residency.</b> Prompts and responses stay on your host except for the call to the provider you selected, plus the embedding call to Google when the semantic cache is enabled.</li>
       </ul>
       <p>Two further deployment notes from <span class="inline">docker-compose.yml</span>:</p>
       <ul>
-        <li>The gateway service bind-mounts the project directory as <span class="inline">.:/app</span>. That is convenient for development but means container code follows your working tree — pin an image build for anything long-lived.</li>
+        <li>The gateway service bind-mounts the project directory as <span class="inline">.:/app</span>. That is convenient for development but means container code follows your working tree; pin an image build for anything long-lived.</li>
         <li>Redis is published on the host at <span class="inline">REDIS_PORT</span> with no password. Remove that port mapping if the host is not private.</li>
       </ul>
     </section>
@@ -653,7 +653,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
 
       <h3 id="admin-ui">Control panel</h3>
       <p>
-        A static dashboard ships as the <span class="inline">admin-ui</span> service on port 3000 —
+        A static dashboard ships as the <span class="inline">admin-ui</span> service on port 3000,
         a single <span class="inline">vis/index.html</span> served by nginx, which reverse-proxies
         <span class="inline">/v1/</span>, <span class="inline">/admin/</span>,
         <span class="inline">/health</span> and <span class="inline">/metrics</span> to the gateway
@@ -680,11 +680,11 @@ response = client.chat.completions.<span class="t-fn">create</span>(
         <table>
           <thead><tr><th scope="col">Metric</th><th scope="col">Type</th><th scope="col">Labels</th><th scope="col">Description</th></tr></thead>
           <tbody>
-            <tr><td><code>switchboard_cache_hits_total</code></td><td>Counter</td><td>—</td><td>Semantic cache hits.</td></tr>
-            <tr><td><code>switchboard_cache_misses_total</code></td><td>Counter</td><td>—</td><td>Semantic cache misses.</td></tr>
+            <tr><td><code>switchboard_cache_hits_total</code></td><td>Counter</td><td>none</td><td>Semantic cache hits.</td></tr>
+            <tr><td><code>switchboard_cache_misses_total</code></td><td>Counter</td><td>none</td><td>Semantic cache misses.</td></tr>
             <tr><td><code>switchboard_provider_requests_total</code></td><td>Counter</td><td><code>provider</code>, <code>key_label</code>, <code>status</code></td><td>Requests per provider and key. Status is one of <code>success</code>, <code>rate_limited</code>, <code>auth_error</code>, <code>server_error</code>, <code>client_error</code>, <code>error</code>.</td></tr>
             <tr><td><code>switchboard_provider_latency_seconds</code></td><td>Histogram</td><td><code>provider</code></td><td>Provider latency. Buckets: 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30s.</td></tr>
-            <tr><td><code>switchboard_key_switches_total</code></td><td>Counter</td><td>—</td><td>Times the router moved to a different key mid-request.</td></tr>
+            <tr><td><code>switchboard_key_switches_total</code></td><td>Counter</td><td>none</td><td>Times the router moved to a different key mid-request.</td></tr>
             <tr><td><code>switchboard_tokens_processed_total</code></td><td>Counter</td><td><code>direction</code></td><td>Tokens processed, <code>input</code> or <code>output</code>.</td></tr>
             <tr><td><code>switchboard_active_keys</code></td><td>Gauge</td><td><code>provider</code></td><td>Enabled keys per provider, set at startup.</td></tr>
           </tbody>
@@ -692,8 +692,8 @@ response = client.chat.completions.<span class="t-fn">create</span>(
       </div>
       <div class="note">
         <b>Two counting caveats.</b> <span class="inline">switchboard_active_keys</span> is populated
-        during the lifespan startup hook only, so it does not follow keys added later at runtime —
-        query <span class="inline">/admin/providers</span> for live counts. And a cache
+        during the lifespan startup hook only, so it does not follow keys added later at runtime.
+        Query <span class="inline">/admin/providers</span> for live counts. And a cache
         <em>hit</em> increments no provider metrics at all, which is exactly why the hit-rate panel
         divides by hits + misses rather than by HTTP request count.
       </div>
@@ -723,7 +723,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
       <h3 id="grafana">Grafana</h3>
       <p>
         Both the Prometheus datasource and the dashboard are provisioned from
-        <span class="inline">grafana/provisioning/</span> at container start — there is nothing to
+        <span class="inline">grafana/provisioning/</span> at container start. There is nothing to
         import by hand. The <b>Switchboard Gateway</b> dashboard carries nine panels:
       </p>
       <div class="tablewrap">
@@ -767,9 +767,9 @@ response = client.chat.completions.<span class="t-fn">create</span>(
       <ol class="plain">
         <li><b>Validation.</b> The body is parsed into <span class="inline">ChatCompletionRequest</span>. Unknown providers are rejected before any network call.</li>
         <li><b>Cache read.</b> Message contents are joined into one string and embedded. Every key under <span class="inline">nexus:cache:*</span> is fetched and scored by cosine similarity; the best score is kept.</li>
-        <li><b>Hit.</b> At <span class="inline">≥ 0.90</span> the stored <span class="inline">ChatCompletionResponse</span> is returned with <span class="inline">X-Cache: HIT</span> and the similarity score. No provider is contacted. A failure anywhere in this path is logged as a warning and treated as a miss — the cache can never take the gateway down.</li>
+        <li><b>Hit.</b> At <span class="inline">≥ 0.90</span> the stored <span class="inline">ChatCompletionResponse</span> is returned with <span class="inline">X-Cache: HIT</span> and the similarity score. No provider is contacted. A failure anywhere in this path is logged as a warning and treated as a miss; the cache can never take the gateway down.</li>
         <li><b>Miss.</b> <span class="inline">CACHE_MISSES</span> increments and the router resolves the provider, loads every enabled key for it, and starts with the best-quota key.</li>
-        <li><b>Provider call.</b> The adapter posts over HTTPX with a 30-second timeout and maps the vendor's reply onto the unified schema. Anthropic requests are translated — the first system message becomes the top-level <span class="inline">system</span> field and <span class="inline">max_tokens</span> is set to 1024.</li>
+        <li><b>Provider call.</b> The adapter posts over HTTPX with a 30-second timeout and maps the vendor's reply onto the unified schema. Anthropic requests are translated: the first system message becomes the top-level <span class="inline">system</span> field and <span class="inline">max_tokens</span> is set to 1024.</li>
         <li><b>Bookkeeping.</b> <span class="inline">x-ratelimit-*</span> headers update the key's row, an absolute reset timestamp is computed from Groq-style durations such as <span class="inline">1m6s</span>, per-minute usage buckets increment, and the four provider metrics record the outcome.</li>
         <li><b>Cache write.</b> The response is stored under a SHA-256 of model, temperature and messages, with its embedding, for one hour. A write failure is logged and the response is still returned.</li>
       </ol>
@@ -828,7 +828,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
         </table>
       </div>
       <div class="note">
-        <b>Writing new tests —</b> each test module points
+        <b>Writing new tests:</b> each test module points
         <span class="inline">os.environ["SQLITE_DB_PATH"]</span> at a temporary directory and sets a
         fresh <span class="inline">ENCRYPTION_KEY</span> <em>before</em> importing any application
         module. Settings are read at import time, so following that order matters.
@@ -893,11 +893,11 @@ response = client.chat.completions.<span class="t-fn">create</span>(
       <p>
         <span class="inline">ChatCompletionRequest</span> accepts a
         <span class="inline">stream</span> field, but sending
-        <span class="inline">stream: true</span> returns an HTTP 400 error with an
+        <span class="inline">stream: true</span> returns an HTTP 400 with an
         OpenAI-compatible error payload
         (<span class="inline">{"error": {"message": "...", "type": "unsupported_parameter", "param": "stream"}}</span>).
         <span class="inline">stream: false</span> and omitting <span class="inline">stream</span>
-        both work as normal (non-streamed). Streaming itself (SSE) is not implemented.
+        both work as normal, non-streamed. Streaming itself (SSE) is not implemented.
       </p>
 
       <h3 id="limit-cache">Cache lookup is a linear scan</h3>
@@ -905,7 +905,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
         Retrieval calls <span class="inline">KEYS nexus:cache:*</span> and then fetches and scores
         every entry in Python. Cost grows linearly with cache size, and
         <span class="inline">KEYS</span> blocks Redis while it runs. The source calls this out as an
-        MVP choice: a vector index — Redis Stack, or a dedicated vector database — is the
+        MVP choice: a vector index, Redis Stack or a dedicated vector database, is the
         intended replacement.
       </p>
 
@@ -929,7 +929,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
         <b>No <code>LICENSE</code> file is published in the repository</b>, and there is no
         <span class="inline">CONTRIBUTING.md</span>. The README states the project is
         <em>"provided as-is for educational and internal use."</em> Without an explicit license,
-        default copyright applies — ask the maintainer before redistributing or using it commercially.
+        default copyright applies. Ask the maintainer before redistributing or using it commercially.
         Contributions go through issues and pull requests; match the conventions already in the
         codebase, and add tests under <span class="inline">tests/</span> following the temporary-database
         pattern described above.

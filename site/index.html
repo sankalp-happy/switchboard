@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SwitchBoard — a self-hosted operator for every LLM call</title>
+<title>SwitchBoard: a self-hosted operator for every LLM call</title>
 <meta name="description" content="SwitchBoard is a self-hosted, OpenAI-compatible LLM gateway. Semantic caching on Redis, automatic API-key rotation with failover across Groq, Google and Anthropic, and Prometheus + Grafana observability. One command to install.">
 <meta name="color-scheme" content="light dark">
-<meta property="og:title" content="SwitchBoard — a self-hosted operator for every LLM call">
+<meta property="og:title" content="SwitchBoard: a self-hosted operator for every LLM call">
 <meta property="og:description" content="Semantic caching, automatic key rotation, and production-grade observability in front of Groq, Google and Anthropic. Self-hosted, OpenAI-compatible.">
 <meta property="og:type" content="website">
 <!-- Applied before first paint so a stored preference never flashes the
@@ -63,7 +63,7 @@
         SwitchBoard sits between your application and Groq, Google and Anthropic. It answers
         repeat questions from a semantic cache instead of the provider, rotates across your API
         keys the moment one hits a rate limit, and reports every hop to Prometheus. The endpoint
-        is OpenAI-compatible — change the base URL, keep your client.
+        is OpenAI-compatible. Change the base URL, keep your client.
       </p>
 
       <div class="hero__cta">
@@ -95,7 +95,7 @@
         </span>
       </figcaption>
 
-      <svg viewBox="0 0 620 400" role="img" aria-label="A patch panel: one incoming request jack is corded to three destination jacks — semantic cache, router, and provider adapters.">
+      <svg viewBox="0 0 620 400" role="img" aria-label="A patch panel: one incoming request jack is corded to three destination jacks: semantic cache, router, and provider adapters.">
         <defs>
           <!-- Stops are coloured from CSS so the brass re-tints per theme. -->
           <radialGradient id="brass" cx="35%" cy="30%">
@@ -183,7 +183,7 @@
       <h2 class="sec-title">Three things break when you call a provider directly.</h2>
       <p class="lede">
         None of them are exotic. They show up the first week you put a prototype in front of
-        real traffic, and every one of them is a gateway's job — not your application's.
+        real traffic, and every one of them is a gateway's job, not your application's.
       </p>
     </div>
 
@@ -193,7 +193,7 @@
         <h3>Keys run dry mid-traffic</h3>
         <p>
           Provider keys carry hard per-minute token and request ceilings. One <span class="inline">429</span>
-          and the call fails — while a second key sits idle in your <span class="inline">.env</span>.
+          and the call fails, while a second key sits idle in your <span class="inline">.env</span>.
           SwitchBoard marks the exhausted key, retries the next one, and only surfaces an error
           once every key is genuinely spent.
         </p>
@@ -230,7 +230,7 @@
       <span class="srail__d">8 modules</span>
     </div>
     <div class="sec-head">
-      <h2 class="sec-title">A small, legible gateway — not a platform.</h2>
+      <h2 class="sec-title">A small, legible gateway, not a platform.</h2>
       <p class="lede">
         Roughly two thousand lines of Python you can read in an afternoon. Every part of it is
         listed here, and every claim on this page maps to a file in the repository.
@@ -267,7 +267,7 @@ client = <span class="t-fn">OpenAI</span>(
           <p>
             Prompts are embedded with <span class="inline">gemini-embedding-001</span> and compared
             by cosine similarity. Anything at or above <b>0.90</b> is served from Redis with a
-            one-hour TTL — no provider call, no tokens spent.
+            one-hour TTL. No provider call, no tokens spent.
           </p>
         </div>
         <div class="item__meta"><b>cache/redis_client.py</b>threshold 0.90 · ttl 3600s</div>
@@ -293,7 +293,7 @@ client = <span class="t-fn">OpenAI</span>(
         <div class="item__body">
           <p>
             Provider credentials are sealed with Fernet before they touch SQLite and are only ever
-            returned masked — <span class="inline">gsk_…4f2a</span>. The
+            returned masked: <span class="inline">gsk_…4f2a</span>. The
             <span class="inline">ENCRYPTION_KEY</span> stays in your environment.
           </p>
         </div>
@@ -319,8 +319,8 @@ client = <span class="t-fn">OpenAI</span>(
         <h3 class="item__name">Self-hosted by default</h3>
         <div class="item__body">
           <p>
-            There is no SwitchBoard service to sign up for. The whole stack — gateway, Redis,
-            Prometheus, Grafana, admin UI — runs from one Compose file on hardware you control.
+            There is no SwitchBoard service to sign up for. The whole stack runs from one Compose
+            file on hardware you control: gateway, Redis, Prometheus, Grafana, admin UI.
             Prompts leave your host only when they reach the provider you chose.
           </p>
         </div>
@@ -548,7 +548,7 @@ client = <span class="t-fn">OpenAI</span>(
     </div>
 
     <ol class="steps">
-      <li><b>Request arrives</b> FastAPI validates the body against <span class="inline">ChatCompletionRequest</span> — model, messages, temperature, optional provider.</li>
+      <li><b>Request arrives</b> FastAPI validates the body against <span class="inline">ChatCompletionRequest</span>: model, messages, temperature, optional provider.</li>
       <li><b>Cache lookup</b> Messages are joined and embedded, then compared against every stored embedding in Redis by cosine similarity.</li>
       <li><b>Hit or miss</b> At <span class="inline">≥ 0.90</span> the stored response returns immediately with <span class="inline">X-Cache: HIT</span>. Otherwise the router takes over.</li>
       <li><b>Key selection</b> The key manager returns the enabled key with the most remaining quota, decrypting it from SQLite only at the moment of use.</li>
@@ -557,7 +557,7 @@ client = <span class="t-fn">OpenAI</span>(
     </ol>
 
     <div class="note note--warn">
-      <b>On failure —</b> a <span class="inline">429</span> marks the key exhausted and moves to the next;
+      <b>On failure:</b> a <span class="inline">429</span> marks the key exhausted and moves to the next;
       a <span class="inline">401</span> disables the key permanently; a <span class="inline">5xx</span> just
       moves on. Only when every enabled key for that provider has been tried does the caller see a
       <span class="inline">502</span>. A background sweeper restores keys whose rate-limit window has
@@ -579,7 +579,7 @@ client = <span class="t-fn">OpenAI</span>(
       <p class="lede">
         <span class="inline">grafana/dashboards/switchboard.json</span> is provisioned at container
         start against a Prometheus datasource that is also provisioned. Nothing to click through
-        on first boot — these nine panels are simply there.
+        on first boot; these nine panels are simply there.
       </p>
     </div>
 
@@ -619,7 +619,7 @@ client = <span class="t-fn">OpenAI</span>(
         <span class="inline">setup.sh</span> checks your Docker install, generates the Fernet
         encryption key, prompts for whichever provider keys you want to seed, writes
         <span class="inline">.env</span>, brings the stack up, and waits until every service
-        reports healthy. Re-running it is safe — existing values are reused, never overwritten.
+        reports healthy. Re-running it is safe; existing values are reused, never overwritten.
       </p>
     </div>
 
@@ -633,7 +633,7 @@ client = <span class="t-fn">OpenAI</span>(
         </div>
         <p class="dim">
           Docker and Docker Compose v2 are the only prerequisites. Provider keys are optional at
-          install time — add them later from the control panel. Without
+          install time; add them later from the control panel. Without
           <span class="inline">GOOGLE_API_KEY</span> the gateway still serves traffic; it just runs
           with the semantic cache disabled.
         </p>

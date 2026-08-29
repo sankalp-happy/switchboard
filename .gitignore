@@ -55,3 +55,7 @@ setup-failure-*.log
 
 # Prometheus scrape credential — a copy of an admin token, written by ./setup.sh
 prometheus/scrape_token
+
+# Local agent tooling and scratch worktrees
+.claude/
+fixup31/
