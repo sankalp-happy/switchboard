@@ -245,6 +245,16 @@ cache = RedisCache()
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse,
           dependencies=[Depends(require_client)])
 async def chat_completions(request: ChatCompletionRequest, response: Response):
+    # Streaming is modelled in the schema but not implemented, and this used to
+    # be a silent downgrade: the adapters forced stream back to False and the
+    # caller got one complete object with a 200. An error is strictly better,
+    # because the caller learns the truth.
+    #
+    # Rejected here rather than as a validator on ChatCompletionRequest: a
+    # pydantic validator raises before the handler and FastAPI renders it as a
+    # 422 with pydantic's own error list, but OpenAI clients read
+    # error.message / error.type / error.param. Matching that shape is worth
+    # more to a caller than reusing the validation machinery.
     if request.stream:
         return JSONResponse(
             status_code=400,

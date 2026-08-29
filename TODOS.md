@@ -97,7 +97,7 @@ tool or function calls, error-payload shape, the full `usage` object, or what ha
 when a client sends a parameter the gateway does not model. One concrete gap was
 already known: `core/schemas.py:12` accepted `stream`, but the provider adapters forced
 it to `False`, so a client requesting a stream got a complete response and no error —
-a silent contract violation. (Fixed in v0.2.1+: `stream: true` now returns HTTP 400.)
+a silent contract violation. (Fixed on `main`, unreleased: `stream: true` now returns HTTP 400.)
 
 **Context:** The README's Limitations section now scopes the claim honestly, so this is
 not urgent, but the gap between "works with the OpenAI SDK" and "implements the OpenAI
