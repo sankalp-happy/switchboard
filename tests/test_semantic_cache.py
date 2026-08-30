@@ -39,8 +39,10 @@ from core.schemas import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     ChatMessage,
+    ProviderResult,
     Usage,
 )
+from gateway import main as gateway_main
 
 
 def _request(content: str) -> ChatCompletionRequest:
@@ -63,6 +65,15 @@ def _response(content: str = "42") -> ChatCompletionResponse:
             )
         ],
         usage=Usage(),
+    )
+
+
+def _provider_result() -> ProviderResult:
+    return ProviderResult(
+        response=_response(),
+        provider="groq",
+        latency_ms=12.0,
+        rate_limit_headers={},
     )
 
 
@@ -157,6 +168,60 @@ async def test_semantic_cache_empty_prompt_short_circuits():
     assert cached is None
     assert similarity == -1.0
     cache.redis_client.keys.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_gateway_miss_omits_similarity_when_no_comparison_ran(
+    client_scope_client, monkeypatch
+):
+    """A disabled cache must not expose its no-comparison sentinel as a score."""
+    monkeypatch.setattr(
+        gateway_main.cache,
+        "get_cached_response",
+        AsyncMock(return_value=(None, -1.0)),
+    )
+    monkeypatch.setattr(gateway_main.cache, "set_cached_response", AsyncMock())
+    monkeypatch.setattr(
+        gateway_main.router,
+        "route_request",
+        AsyncMock(return_value=_provider_result()),
+    )
+
+    response = await client_scope_client.post(
+        "/v1/chat/completions",
+        json=_request("cache disabled").model_dump(mode="json"),
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Cache"] == "MISS"
+    assert "X-Semantic-Similarity" not in response.headers
+
+
+@pytest.mark.asyncio
+async def test_gateway_miss_reports_similarity_when_comparison_ran(
+    client_scope_client, monkeypatch
+):
+    """A real below-threshold comparison remains visible on a cache miss."""
+    monkeypatch.setattr(
+        gateway_main.cache,
+        "get_cached_response",
+        AsyncMock(return_value=(None, 0.5)),
+    )
+    monkeypatch.setattr(gateway_main.cache, "set_cached_response", AsyncMock())
+    monkeypatch.setattr(
+        gateway_main.router,
+        "route_request",
+        AsyncMock(return_value=_provider_result()),
+    )
+
+    response = await client_scope_client.post(
+        "/v1/chat/completions",
+        json=_request("below threshold").model_dump(mode="json"),
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Cache"] == "MISS"
+    assert response.headers["X-Semantic-Similarity"] == "0.5000"
 
 
 @pytest.mark.integration
