@@ -7,7 +7,11 @@ carries a valid ADMIN_TOKENS credential; the unauthenticated counterparts
 live in tests/test_auth.py against the `raw_client` fixture.
 """
 
+from pathlib import Path
+
 import pytest
+
+from gateway.main import app
 
 
 @pytest.mark.asyncio
@@ -115,3 +119,15 @@ async def test_health(raw_client):
     resp = await raw_client.get("/health")
     assert resp.status_code == 200
     assert resp.json()["status"] == "ok"
+
+
+def test_app_version_matches_the_version_file():
+    """`app.version` is what /openapi.json reports, and it was a string literal.
+
+    /health reads VERSION directly so it cannot drift, but the FastAPI
+    constructor is not covered by the `docs consistency` CI job, which only
+    checks README.md, the site, and CHANGELOG.md. Without this assert, the next
+    release bump can silently leave the schema reporting the old number.
+    """
+    expected = (Path(__file__).resolve().parent.parent / "VERSION").read_text().strip()
+    assert app.version == expected
