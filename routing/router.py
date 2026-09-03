@@ -100,12 +100,12 @@ class Router:
                 PROVIDER_LATENCY.labels(provider=provider_name).observe(
                     result.latency_ms / 1000
                 )
-                TOKENS_PROCESSED.labels(direction="input").inc(
-                    result.response.usage.prompt_tokens
-                )
-                TOKENS_PROCESSED.labels(direction="output").inc(
-                    result.response.usage.completion_tokens
-                )
+                TOKENS_PROCESSED.labels(
+                    provider=provider_name, key_label=str(key_id), direction="input"
+                ).inc(result.response.usage.prompt_tokens)
+                TOKENS_PROCESSED.labels(
+                    provider=provider_name, key_label=str(key_id), direction="output"
+                ).inc(result.response.usage.completion_tokens)
 
                 # Record per-key usage for dashboard stats
                 total_tokens = (

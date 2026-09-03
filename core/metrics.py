@@ -37,7 +37,7 @@ KEY_SWITCHES = Counter(
 TOKENS_PROCESSED = Counter(
     "switchboard_tokens_processed_total",
     "Total tokens processed",
-    ["direction"],  # "input" or "output"
+    ["provider", "key_label", "direction"],
 )
 
 # --- Active keys gauge ---
