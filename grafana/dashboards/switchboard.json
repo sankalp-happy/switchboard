@@ -153,7 +153,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
           "expr": "rate(switchboard_tokens_processed_total[5m])",
-          "legendFormat": "{{direction}}",
+          "legendFormat": "{{provider}} / key {{key_label}} / {{direction}}",
           "refId": "A"
         }
       ],

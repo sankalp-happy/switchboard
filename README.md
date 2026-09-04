@@ -361,7 +361,7 @@ Key counters and histograms:
 | `switchboard_provider_requests_total`   | Counter   | Requests per provider/key/status     |
 | `switchboard_provider_latency_seconds`  | Histogram | Provider response latency            |
 | `switchboard_key_switches_total`        | Counter   | Key rotation events                  |
-| `switchboard_tokens_processed_total`    | Counter   | Tokens processed (input / output)    |
+| `switchboard_tokens_processed_total`    | Counter   | Tokens per provider/key/direction     |
 | `switchboard_active_keys`              | Gauge     | Enabled keys per provider            |
 
 ### Grafana

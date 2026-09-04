@@ -685,7 +685,7 @@ response = client.chat.completions.<span class="t-fn">create</span>(
             <tr><td><code>switchboard_provider_requests_total</code></td><td>Counter</td><td><code>provider</code>, <code>key_label</code>, <code>status</code></td><td>Requests per provider and key. Status is one of <code>success</code>, <code>rate_limited</code>, <code>auth_error</code>, <code>server_error</code>, <code>client_error</code>, <code>error</code>.</td></tr>
             <tr><td><code>switchboard_provider_latency_seconds</code></td><td>Histogram</td><td><code>provider</code></td><td>Provider latency. Buckets: 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30s.</td></tr>
             <tr><td><code>switchboard_key_switches_total</code></td><td>Counter</td><td>none</td><td>Times the router moved to a different key mid-request.</td></tr>
-            <tr><td><code>switchboard_tokens_processed_total</code></td><td>Counter</td><td><code>direction</code></td><td>Tokens processed, <code>input</code> or <code>output</code>.</td></tr>
+            <tr><td><code>switchboard_tokens_processed_total</code></td><td>Counter</td><td><code>provider</code>, <code>key_label</code>, <code>direction</code></td><td>Tokens processed per provider and key, split into <code>input</code> and <code>output</code>.</td></tr>
             <tr><td><code>switchboard_active_keys</code></td><td>Gauge</td><td><code>provider</code></td><td>Enabled keys per provider, set at startup.</td></tr>
           </tbody>
         </table>

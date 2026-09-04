@@ -25,6 +25,7 @@ import httpx
 
 from core.database import init_db
 from core.key_manager import key_manager
+from core.metrics import TOKENS_PROCESSED
 from core.schemas import (
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -67,6 +68,23 @@ def _make_provider_result():
     )
 
 
+def _token_count(provider: str, key_id: int, direction: str) -> float:
+    """Return the current token counter for one provider/key/direction series."""
+    expected_labels = {
+        "provider": provider,
+        "key_label": str(key_id),
+        "direction": direction,
+    }
+    for metric in TOKENS_PROCESSED.collect():
+        for sample in metric.samples:
+            if (
+                sample.name == "switchboard_tokens_processed_total"
+                and sample.labels == expected_labels
+            ):
+                return sample.value
+    return 0.0
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def setup():
     await init_db()
@@ -95,6 +113,24 @@ async def test_router_picks_key_and_calls_provider():
 
         MockProvider.assert_called_once_with(api_key="gsk_test_key_1")
         assert result.response.choices[0].message.content == "Hi!"
+
+
+@pytest.mark.asyncio
+async def test_router_records_token_metrics_by_provider_and_key():
+    """Router should attribute input and output tokens to the selected key."""
+    key_id = await key_manager.add_key("groq", "gsk_metrics_key", "metrics")
+    input_before = _token_count("groq", key_id, "input")
+    output_before = _token_count("groq", key_id, "output")
+
+    with patch("routing.router.GroqProvider") as MockProvider:
+        router = Router()
+        instance = MockProvider.return_value
+        instance.generate = AsyncMock(return_value=_make_provider_result())
+
+        await router.route_request(_make_request())
+
+    assert _token_count("groq", key_id, "input") == input_before + 5
+    assert _token_count("groq", key_id, "output") == output_before + 3
 
 
 @pytest.mark.asyncio
