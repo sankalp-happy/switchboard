@@ -26,7 +26,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-That last command should print something like `88 passed, 1 deselected`. If it
+That last command should print something like `118 passed, 1 deselected`. If it
 does not, that is a bug in the project and not in your setup — please open an issue.
 
 `requirements-dev.txt` pulls in `requirements.txt`, so it is the only file you need.
@@ -136,7 +136,7 @@ the private reporting path.
 
 ## Looking for something to work on
 
-[`TODOS.md`](TODOS.md) tracks known gaps with enough context to pick one up cold — what
+[`TODOS.md`](docs/TODOS.md) tracks known gaps with enough context to pick one up cold — what
 the problem is, why it matters, which files are involved, and where to start. The test
 coverage items are a reasonable first contribution.
 

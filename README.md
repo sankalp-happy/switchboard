@@ -435,6 +435,8 @@ switchboard/
 │   ├── dashboards/          # Pre-built Grafana dashboard JSON
 │   └── provisioning/        # Auto-provisioning for datasources & dashboards
 ├── tests/                   # pytest suite; see CONTRIBUTING.md for the two tiers
+├── docs/                    # Reference docs: architecture, API, config, internals
+│   └── TODOS.md             # Known gaps, with enough context to pick one up
 ├── .github/
 │   ├── workflows/ci.yml     # Tests on 3.11/3.12, docs drift check, docker build
 │   ├── ISSUE_TEMPLATE/      # Bug report + feature request forms
@@ -445,8 +447,7 @@ switchboard/
 ├── requirements-dev.txt     # Runtime + test dependencies
 ├── pytest.ini               # Marker registry; excludes the integration tier
 ├── VERSION                  # Single source of truth for the release number
-├── CHANGELOG.md             # Keep a Changelog format
-└── TODOS.md                 # Known gaps, with enough context to pick one up
+└── CHANGELOG.md             # Keep a Changelog format
 ```
 
 ---
@@ -512,7 +513,7 @@ requests go only to the provider that serves them.
 ## Limitations
 
 Things SwitchBoard does not currently do. These are known and tracked in
-[TODOS.md](TODOS.md), not undiscovered.
+[TODOS.md](docs/TODOS.md), not undiscovered.
 
 - **No per-caller rate limiting.** Authentication answers "may you call this?" but not
   "how much?". A valid client token can consume your entire provider quota.
@@ -541,7 +542,7 @@ to a passing test run in about five minutes, with no API keys and no Redis requi
 - [Report a bug or request a feature](https://github.com/sankalp-happy/switchboard/issues/new/choose)
 - [Report a security vulnerability privately](SECURITY.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
-- [TODOS.md](TODOS.md) lists known gaps with enough context to pick one up cold
+- [TODOS.md](docs/TODOS.md) lists known gaps with enough context to pick one up cold
 
 ---
 
