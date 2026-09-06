@@ -61,14 +61,14 @@ Only the latest minor release gets fixes. There are no long-term support branche
   tokens are full control by design.
 - Vulnerabilities in Groq, Google, or Anthropic themselves. Report those to the vendor.
 - Denial of service from sending a lot of traffic with a valid client token. Per-caller
-  rate limiting is a known gap, tracked in [TODOS.md](TODOS.md).
+  rate limiting is a known gap, tracked in [TODOS.md](docs/TODOS.md).
 - Anything that needs an attacker to already have shell access to the host.
 - Missing hardening that is documented as a known limitation in the README.
 
 ## Known limitations
 
 These are deliberate and documented rather than undiscovered. Reporting them is
-welcome but they are already tracked in [TODOS.md](TODOS.md):
+welcome but they are already tracked in [TODOS.md](docs/TODOS.md):
 
 - **No per-caller rate limiting.** A valid client token can consume the whole provider quota.
 - **The gateway container runs as root.** Deferred over a volume-ownership concern.
