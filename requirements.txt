@@ -7,8 +7,8 @@
 # .github/dependabot.yml) proposes the upgrades.
 
 # --- Web framework -----------------------------------------------------------
-fastapi==0.141.1
-uvicorn==0.52.4
+fastapi==0.162.0
+uvicorn==0.54.0
 
 # --- HTTP client -------------------------------------------------------------
 # Every provider adapter talks to its upstream over httpx directly. There is no
@@ -21,8 +21,8 @@ httpx==0.28.1
 redis==5.0.3
 
 # --- Schemas / settings ------------------------------------------------------
-pydantic==2.13.4
-pydantic-settings==2.15.0
+pydantic==2.14.1
+pydantic-settings==2.16.2
 
 # --- Embeddings (semantic cache; optional at runtime) ------------------------
 # Without GOOGLE_API_KEY the cache disables itself and requests are still
@@ -32,11 +32,11 @@ google-genai==1.64.0
 # 3.11 and the Dockerfile ships 3.11-slim, so 2.4.x is the last usable line.
 # Dependabot will keep proposing 2.5.x; it cannot install here. Lift this only
 # together with the Python floor in ci.yml and the Dockerfile.
-numpy==2.4.6
+numpy==2.5.4
 
 # --- Storage / crypto --------------------------------------------------------
 aiosqlite==0.22.1
-cryptography==50.0.0
+cryptography==50.0.2
 
 # --- Observability -----------------------------------------------------------
 prometheus-client==0.26.0
