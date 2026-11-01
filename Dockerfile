@@ -1,7 +1,7 @@
 # Pinned to a digest, not just a tag: `python:3.11-slim` is a moving target, and a
 # contributor rebuilding next month would otherwise get a different base than the
 # one CI tested. Dependabot's docker ecosystem proposes the bumps.
-FROM python:3.11-slim@sha256:9c900dea9e8fb7e16277c179b555cc72d29a352dbc33cff48ad5a0412fd5bfc7
+FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913
 
 WORKDIR /app
 
